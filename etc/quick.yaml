@@ -1,0 +1,7 @@
+Name: quick
+Host: 0.0.0.0
+Port: 8889
+SecureStorage:
+  DataPath: etc/secure_data.json
+Auth115:
+  DownloadPath: data
