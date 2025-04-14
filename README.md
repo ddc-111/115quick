@@ -22,7 +22,7 @@
 
 ### 快速开始
 
-1. 从 [Release](https://github.com/yourusername/115Quick/releases) 页面下载对应平台的二进制文件和配置文件
+1. 从 [Release]([https://github.com/yourusername/115Quick/releases](https://github.com/ddc-111/115quick/releases/tag/0.1)) 页面下载对应平台的二进制文件和配置文件
 2. 解压文件后，在 `etc` 目录下修改 `config.yaml` 配置文件：
    - 设置下载文件保存路径
    - 配置服务监听端口
