@@ -66,7 +66,9 @@
 ## 密钥检测
 
 - 本服务提供 24 小时免费试用
-- 试用期间后可以进qq群966107802获取免费密钥 
+- 试用期间后可以进qq群966107802获取免费密钥
+- ![qrcode_1744876569463](https://github.com/user-attachments/assets/327eab27-a66e-47e8-b0cd-78761e35fa60)
+
 
 我的爱发电主页 https://afdian.com/a/quick115
 ![afdian- 未认证 115quick](https://github.com/user-attachments/assets/ac223324-63f7-4d86-83ef-b4d5c502b1ef)
