@@ -86,13 +86,13 @@ jobs:
       - name: Create plugin archive
         run: |
           cd plugin/115Quick_vue/115Quick/dist
-          zip -r "../../../115quick-chrome-plugin.zip" *
+          zip -r "$GITHUB_WORKSPACE/115quick-chrome-plugin.zip" *
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
           name: chrome-plugin
-          path: "115quick-chrome-plugin.zip"
+          path: ${{ github.workspace }}/115quick-chrome-plugin.zip
 
   release:
     name: Create Release
