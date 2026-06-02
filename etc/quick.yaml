@@ -1,6 +1,7 @@
 Name: quick
 Host: 0.0.0.0
 Port: 8889
+DBPath: data/115quick.db
 Auth115:
   DownloadPath: data
   AccessToken: ""

@@ -10,21 +10,16 @@ import (
 	"math/rand"
 	"net/http"
 	"net/url"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
 
-const (
-	dataFileName = "file_infos.json"
-)
-
 type ServiceContext struct {
 	Config                  config.Config
 	Auth115                 *Auth115Manager
+	Store                   *Store
 	Mode                    int64
 	DownloadLinkMessageChan chan *DownloadLinkMessage
 	folderID                string
@@ -40,6 +35,13 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Mode:                    0,
 		DownloadLinkMessageChan: make(chan *DownloadLinkMessage, 1000000),
 	}
+
+	store, err := NewStore(c.DBPath)
+	if err != nil {
+		logx.Errorf("初始化数据库失败: %v", err)
+		panic(err)
+	}
+	ctx.Store = store
 
 	ctx.Auth115 = NewAuth115Manager(ctx)
 
@@ -141,35 +143,4 @@ func (s *ServiceContext) addDownloadLink(DownloadLink string) {
 	}
 
 	return
-}
-
-func getDataFilePath(downloadPath string) string {
-	return filepath.Join(downloadPath, dataFileName)
-}
-
-func (s *ServiceContext) SaveFileInfos(fileInfos []FileInfo) error {
-	dataPath := getDataFilePath(s.Config.Auth115.DownloadPath)
-	dir := filepath.Dir(dataPath)
-	if err := os.MkdirAll(dir, 0755); err != nil {
-		return err
-	}
-	data, err := json.MarshalIndent(fileInfos, "", "  ")
-	if err != nil {
-		return err
-	}
-	return os.WriteFile(dataPath, data, 0644)
-}
-
-func (s *ServiceContext) LoadFileInfos() []FileInfo {
-	dataPath := getDataFilePath(s.Config.Auth115.DownloadPath)
-	data, err := os.ReadFile(dataPath)
-	if err != nil {
-		return nil
-	}
-	var fileInfos []FileInfo
-	if err := json.Unmarshal(data, &fileInfos); err != nil {
-		logx.Errorf("加载文件信息失败: %v", err)
-		return nil
-	}
-	return fileInfos
 }

@@ -1,0 +1,114 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  build-server:
+    name: Build Server Binaries
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        include:
+          - goos: windows
+            goarch: amd64
+            suffix: .exe
+          - goos: linux
+            goarch: amd64
+            suffix: ''
+          - goos: linux
+            goarch: arm64
+            suffix: ''
+          - goos: darwin
+            goarch: amd64
+            suffix: ''
+          - goos: darwin
+            goarch: arm64
+            suffix: ''
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.24'
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 0
+        run: |
+          BINARY_NAME="115quick${{ matrix.suffix }}"
+          go build -ldflags="-s -w" -o "dist/${BINARY_NAME}" .
+
+      - name: Create archive
+        run: |
+          BINARY_NAME="115quick${{ matrix.suffix }}"
+          cp etc/quick.yaml dist/
+          cd dist
+          tar -czf "../115quick-${{ matrix.goos }}-${{ matrix.goarch }}.tar.gz" *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: "*.tar.gz"
+
+  build-plugin:
+    name: Build Chrome Plugin
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+
+      - name: Install dependencies
+        working-directory: plugin/115Quick_vue/115Quick
+        run: npm ci
+
+      - name: Build
+        working-directory: plugin/115Quick_vue/115Quick
+        run: npm run build
+
+      - name: Create plugin archive
+        run: |
+          cd plugin/115Quick_vue/115Quick/dist
+          zip -r "../../../115quick-chrome-plugin.zip" *
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: chrome-plugin
+          path: "115quick-chrome-plugin.zip"
+
+  release:
+    name: Create Release
+    needs: [build-server, build-plugin]
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          generate_release_notes: true
+          files: |
+            artifacts/**/*.tar.gz
+            artifacts/**/*.zip

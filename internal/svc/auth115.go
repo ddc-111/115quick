@@ -227,19 +227,30 @@ func (m *Auth115Manager) AddFileInfo(infoHash string, url string) {
 	m.fileMutex.Lock()
 	defer m.fileMutex.Unlock()
 
-	fileInfo := FileInfo{
+	if err := m.svcCtx.Store.AddFileInfo(infoHash, url); err != nil {
+		logx.Errorf("保存文件信息失败: %v", err)
+	}
+
+	m.fileInfos = append(m.fileInfos, FileInfo{
 		InfoHash: infoHash,
 		URL:      url,
 		AddTime:  time.Now(),
-	}
-	m.fileInfos = append(m.fileInfos, fileInfo)
-
-	m.saveFileInfos()
+	})
 }
 
-func (m *Auth115Manager) saveFileInfos() {
-	if err := m.svcCtx.SaveFileInfos(m.fileInfos); err != nil {
-		logx.Errorf("保存文件信息失败: %v", err)
+func (m *Auth115Manager) removeFileInfo(url string) {
+	m.fileMutex.Lock()
+	defer m.fileMutex.Unlock()
+
+	if err := m.svcCtx.Store.RemoveFileInfo(url); err != nil {
+		logx.Errorf("删除文件信息失败: %v", err)
+	}
+
+	for i, info := range m.fileInfos {
+		if info.URL == url {
+			m.fileInfos = append(m.fileInfos[:i], m.fileInfos[i+1:]...)
+			break
+		}
 	}
 }
 
@@ -255,8 +266,8 @@ func (m *Auth115Manager) fileInfoCheck() bool {
 			if task.URL == fileInfo.URL {
 				if task.Status == 2 {
 					logx.Infof("文件下载完成，文件ID: %s", task.FileID)
+					m.svcCtx.Store.RemoveFileInfo(fileInfo.URL)
 					m.fileInfos = append(m.fileInfos[:i], m.fileInfos[i+1:]...)
-					m.saveFileInfos()
 
 					fileDetail, err := m.GetFileInfo(task.FileID)
 
@@ -317,9 +328,13 @@ func (m *Auth115Manager) fileInfoCheck() bool {
 }
 
 func (m *Auth115Manager) loadFileInfos() {
-	fileInfos := m.svcCtx.LoadFileInfos()
-	if fileInfos != nil {
-		m.fileInfos = fileInfos
+	infos, err := m.svcCtx.Store.GetAllFileInfos()
+	if err != nil {
+		logx.Errorf("加载文件信息失败: %v", err)
+		return
+	}
+	if infos != nil {
+		m.fileInfos = infos
 	}
 }
 
