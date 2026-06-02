@@ -17,9 +17,10 @@
     "format": "prettier --write src/"
   },
   "dependencies": {
+    "@types/crypto-js": "^4.2.2",
     "axios": "^1.8.4",
     "buffer": "^6.0.3",
-    "crypto": "^1.0.1",
+    "crypto-js": "^4.2.0",
     "element-plus": "^2.9.7",
     "pinia": "^3.0.1",
     "pinia-plugin-persistedstate": "^4.2.0",
