@@ -1,0 +1,7 @@
+Name: quick
+Host: 0.0.0.0
+Port: 8889
+Auth115:
+  DownloadPath: data
+  AccessToken: ""
+  RefreshToken: ""

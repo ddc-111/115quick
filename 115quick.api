@@ -1,0 +1,61 @@
+type (
+	AddDownloadLinkReq {
+		DownloadLink string `json:"downloadLink"`
+	}
+	ServerInfoReq  {}
+	DownFileInfo {
+		Url     string `json:"url"`
+		AddTime string `json:"addTime"`
+	}
+	AuthData {
+		AuthStatus string `json:"authStatus"` //认证状态
+		ExpireAt   string `json:"expireAt"` //过期时间
+	}
+	ServerInfoResp {
+		DownFileInfoList []DownFileInfo `json:"downFileInfoList"`
+		AuthData         AuthData       `json:"authData"`
+		Mode             int64          `json:"mode"` //默认只下载视频 mode为1是下载全部
+	}
+	AddAuthPwReq {
+		AuthPw string `json:"authPw"`
+	}
+	AddAuthPwResp  {}
+	NilResp  {}
+	SetDownloadModeReq {
+		Mode int64 `json:"mode"` //默认只下载视频 mode为1是下载全部
+	}
+	StartReNameReq {
+		Mode int64 `json:"mode"` //重命名模式 0全量重命名 1增量重命名
+		FolderID      string `json:"folder_id,optional"`     // 起始文件夹ID，如果为空则从根目录开始
+		FilePattern   string `json:"file_pattern,optional"`  // 文件模式正则表达式，默认为(?i)[a-z]+-\d+
+		DeleteOthers  bool   `json:"delete_others,optional"` // 是否删除其他文件
+		RenameToMatch bool   `json:"rename_match,optional"`  // 是否将文件重命名为匹配项
+	}
+)
+
+@server (
+	group:  Download
+	prefix: v1/Download
+)
+service quick {
+	@doc "添加下载链接"
+	@handler AddDownloadLink
+	post /api/addDownloadLink (AddDownloadLinkReq) returns (NilResp)
+
+	@doc "获取服务器信息"
+	@handler GetServerInfo
+	get /api/getServerInfo (ServerInfoReq) returns (ServerInfoResp)
+
+	@doc "添加认证密钥"
+	@handler addAuthPw
+	post /api/addAuthPw (AddAuthPwReq) returns (AddAuthPwResp)
+
+	@doc "设置下载模式"
+	@handler SetDownloadMode
+	post /api/setDownloadMode (SetDownloadModeReq) returns (NilResp)
+
+	@doc "重命名"
+	@handler StartReName
+	post /api/StartReName (StartReNameReq) returns (NilResp)
+}
+
