@@ -1,0 +1,22 @@
+# Binaries
+*.exe
+*.dll
+*.so
+*.dylib
+
+# IDE
+.idea/
+.vscode/
+
+# Node
+node_modules/
+
+# Data
+data/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Go
+vendor/

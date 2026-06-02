@@ -85,8 +85,12 @@ func (s *ServiceContext) addDownloadLink(DownloadLink string) {
 	token, err := s.Auth115.GetAccessToken()
 	if err != nil {
 		fmt.Errorf("获取115访问令牌失败: %v", err)
+		return
 	}
 	WpPathId := s.GetFolderID()
+
+	// 记录任务历史（等待状态）
+	s.Store.AddTaskHistory(DownloadLink, "", "", 0, 0) // status=0 等待
 
 	formData := url.Values{}
 	formData.Set("urls", DownloadLink)
@@ -96,6 +100,8 @@ func (s *ServiceContext) addDownloadLink(DownloadLink string) {
 	request, err := http.NewRequest("POST", apiURL, strings.NewReader(formData.Encode()))
 	if err != nil {
 		fmt.Errorf("创建HTTP请求失败: %v", err)
+		s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
+		return
 	}
 
 	request.Header.Set("Content-Type", "application/x-www-form-urlencoded")
@@ -105,25 +111,34 @@ func (s *ServiceContext) addDownloadLink(DownloadLink string) {
 	response, err := client.Do(request)
 	if err != nil {
 		fmt.Errorf("发送HTTP请求失败: %v", err)
+		s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
+		return
 	}
 	defer response.Body.Close()
 
 	body, err := io.ReadAll(response.Body)
 	if err != nil {
 		fmt.Errorf("读取响应体失败: %v", err)
+		s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
+		return
 	}
 
 	var respData types.AddOfflineTaskResp
 	if err := json.Unmarshal(body, &respData); err != nil {
 		fmt.Errorf("解析响应失败: %v", err)
+		s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
+		return
 	}
 
 	if !respData.State {
 		if respData.Code == 10008 {
 			s.Auth115.AddFileInfo("", DownloadLink)
+			s.Store.UpdateTaskHistoryComplete(DownloadLink, 2) // status=2 完成（重复）
 			return
 		}
 		fmt.Errorf("添加下载任务失败: %s", respData.Message)
+		s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
+		return
 	}
 
 	fmt.Printf("添加下载任务成功: %+v", respData)
@@ -135,10 +150,12 @@ func (s *ServiceContext) addDownloadLink(DownloadLink string) {
 				fmt.Printf("链接 %d 重复添加成功: URL: %s", i+1, item.URL)
 			} else {
 				fmt.Printf("链接 %d 添加失败: %s, 错误码: %d, URL: %s", i+1, item.Message, item.Code, item.URL)
+				s.Store.UpdateTaskHistoryComplete(DownloadLink, 3) // status=3 失败
 			}
 		} else {
 			fmt.Printf("链接 %d 添加成功: URL: %s, InfoHash: %s", i+1, item.URL, item.InfoHash)
 			s.Auth115.AddFileInfo(item.InfoHash, item.URL)
+			s.Store.UpdateTaskHistoryStatus(item.URL, 1, 0, "") // status=1 下载中
 		}
 	}
 

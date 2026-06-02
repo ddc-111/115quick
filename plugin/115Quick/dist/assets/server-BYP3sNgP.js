@@ -1,0 +1,1 @@
+import{r as e}from"./request-CG3w8DWC.js";function n(){return e.get("/api/getServerInfo")}function a(t){return e.post("/api/addDownloadLink",{downloadLink:t})}function r(t){return e.post("/api/setDownloadMode",{mode:t})}function s(t){return e.post("/api/StartReName",t)}export{a,r as b,n as g,s};

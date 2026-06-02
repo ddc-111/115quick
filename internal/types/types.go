@@ -19,14 +19,56 @@ type AuthData struct {
 	ExpireAt   string `json:"expireAt"`   //过期时间
 }
 
+type CloudTaskItem struct {
+	InfoHash     string  `json:"infoHash"`
+	Name         string  `json:"name"`
+	Size         int64   `json:"size"`
+	Status       int     `json:"status"` // -1=失败 0=分配中 1=下载中 2=完成
+	PercentDone  float64 `json:"percentDone"`
+	RateDownload int     `json:"rateDownload"` // bytes/s
+	AddTime      string  `json:"addTime"`
+	URL          string  `json:"url"`
+}
+
+type CloudTasksReq struct {
+}
+
+type CloudTasksResp struct {
+	Tasks []CloudTaskItem `json:"tasks"`
+	Count int             `json:"count"`
+}
+
 type DownFileInfo struct {
 	Url     string `json:"url"`
 	AddTime string `json:"addTime"`
 }
 
+type DownloadProgressItem struct {
+	FileName   string  `json:"fileName"`
+	FileSize   int64   `json:"fileSize"`
+	Downloaded int64   `json:"downloaded"`
+	Speed      float64 `json:"speed"`   // MB/s
+	Percent    float64 `json:"percent"` // 0-100
+	StartTime  string  `json:"startTime"`
+}
+
+type DownloadProgressReq struct {
+}
+
+type DownloadProgressResp struct {
+	Downloads []DownloadProgressItem `json:"downloads"`
+}
+
 type NilResp struct {
 	Success bool   `json:"success"`
 	Message string `json:"message,omitempty"`
+}
+
+type RefreshTasksReq struct {
+}
+
+type RemoveDownloadTaskReq struct {
+	URL string `json:"url"`
 }
 
 type ServerInfoReq struct {
@@ -42,10 +84,49 @@ type SetDownloadModeReq struct {
 	Mode int64 `json:"mode"` //默认只下载视频 mode为1是下载全部
 }
 
+type SetTokenReq struct {
+	AccessToken  string `json:"accessToken"`
+	RefreshToken string `json:"refreshToken"`
+}
+
 type StartReNameReq struct {
-	Mode          int64  `json:"mode"`          // 重命名模式 0全量重命名(递归所有文件夹) 1增量重命名(只处理指定文件夹)
-	FolderID      string `json:"folder_id"`     // 起始文件夹ID，如果为空则从根目录开始
-	FilePattern   string `json:"file_pattern"`  // 文件模式正则表达式，默认为(?i)[a-z]+-\d+
-	DeleteOthers  bool   `json:"delete_others"` // 是否删除其他文件
-	RenameToMatch bool   `json:"rename_match"`  // 是否将文件重命名为匹配项
+	Mode          int64  `json:"mode"`                   //重命名模式 0全量重命名 1增量重命名
+	FolderID      string `json:"folder_id,optional"`     // 起始文件夹ID，如果为空则从根目录开始
+	FilePattern   string `json:"file_pattern,optional"`  // 文件模式正则表达式，默认为(?i)[a-z]+-\d+
+	DeleteOthers  bool   `json:"delete_others,optional"` // 是否删除其他文件
+	RenameToMatch bool   `json:"rename_match,optional"`  // 是否将文件重命名为匹配项
+}
+
+type TaskHistoryItem struct {
+	ID           int64   `json:"id"`
+	URL          string  `json:"url"`
+	Name         string  `json:"name"`
+	Size         int64   `json:"size"`
+	Status       int     `json:"status"` // 0=等待 1=下载中 2=完成 3=失败
+	Progress     float64 `json:"progress"`
+	ErrorMsg     string  `json:"errorMsg"`
+	AddTime      string  `json:"addTime"`
+	CompleteTime string  `json:"completeTime"`
+}
+
+type TaskHistoryReq struct {
+	Page     int `json:"page,optional,default=1"`
+	PageSize int `json:"pageSize,optional,default=20"`
+}
+
+type TaskHistoryResp struct {
+	Items    []TaskHistoryItem `json:"items"`
+	Total    int               `json:"total"`
+	Page     int               `json:"page"`
+	PageSize int               `json:"pageSize"`
+}
+
+type TokenStatusReq struct {
+}
+
+type TokenStatusResp struct {
+	Configured bool   `json:"configured"` // 是否已配置
+	Valid      bool   `json:"valid"`      // 是否有效
+	ExpiresAt  string `json:"expiresAt"`  // 过期时间
+	Message    string `json:"message"`    // 状态消息
 }

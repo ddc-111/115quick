@@ -1,0 +1,140 @@
+:root {
+  --el-bg-color: #1a1a2e;
+  --el-bg-color-overlay: #16213e;
+  --el-text-color-primary: #ffffff;
+  --el-text-color-regular: #a0a0a0;
+  --el-color-primary: #0f3460;
+  --el-color-danger: #e94560;
+}
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+body {
+  font-family: 'Helvetica Neue', Helvetica, 'PingFang SC', 'Hiragino Sans GB',
+    'Microsoft YaHei', '微软雅黑', Arial, sans-serif;
+  background-color: var(--el-bg-color);
+  color: var(--el-text-color-primary);
+}
+
+.el-aside {
+  background-color: var(--el-bg-color-overlay);
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.el-main {
+  padding: 20px;
+}
+
+.page-container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.page-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.page-title {
+  font-size: 24px;
+  font-weight: 600;
+  color: var(--el-text-color-primary);
+}
+
+.card {
+  background-color: var(--el-bg-color-overlay);
+  border-radius: 12px;
+  padding: 20px;
+  margin-bottom: 16px;
+  transition: all 0.3s ease;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+
+  &:hover {
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    transform: translateY(-2px);
+  }
+}
+
+.stat-card {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+}
+
+.stat-icon {
+  width: 48px;
+  height: 48px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 24px;
+}
+
+.stat-info {
+  flex: 1;
+}
+
+.stat-label {
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+  margin-bottom: 4px;
+}
+
+.stat-value {
+  font-size: 24px;
+  font-weight: 600;
+}
+
+.el-progress {
+  margin-top: 8px;
+}
+
+.task-item {
+  padding: 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+
+  &:last-child {
+    border-bottom: none;
+  }
+}
+
+.task-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 8px;
+}
+
+.task-name {
+  font-size: 16px;
+  font-weight: 500;
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.task-meta {
+  display: flex;
+  gap: 16px;
+  font-size: 14px;
+  color: var(--el-text-color-regular);
+}
+
+.empty-state {
+  text-align: center;
+  padding: 40px;
+  color: var(--el-text-color-regular);
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 16px;
+}

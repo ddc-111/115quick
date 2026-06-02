@@ -37,6 +37,9 @@ type Auth115Manager struct {
 	DownloadInfoChan chan *DownloadInfo
 	CloudTask        AllTasks
 	running          int32
+
+	// 下载进度追踪
+	downloadProgressMap sync.Map // map[string]*DownloadProgress
 }
 
 type AllTasks []struct {
@@ -70,6 +73,17 @@ type DownloadInfo struct {
 	downloadURL string
 }
 
+type DownloadProgress struct {
+	FileName   string    `json:"fileName"`
+	FileSize   int64     `json:"fileSize"`
+	Downloaded int64     `json:"downloaded"`
+	Speed      float64   `json:"speed"`    // MB/s
+	Percent    float64   `json:"percent"`  // 0-100
+	StartTime  time.Time `json:"startTime"`
+	LastBytes  int64     `json:"-"`
+	LastTime   time.Time `json:"-"`
+}
+
 func NewAuth115Manager(svcCtx *ServiceContext) *Auth115Manager {
 	m := &Auth115Manager{
 		svcCtx:           svcCtx,
@@ -79,8 +93,18 @@ func NewAuth115Manager(svcCtx *ServiceContext) *Auth115Manager {
 		running:          0,
 	}
 
-	accessToken := svcCtx.Config.Auth115.AccessToken
-	refreshToken := svcCtx.Config.Auth115.RefreshToken
+	// 优先从数据库加载 token
+	accessToken, refreshToken, err := svcCtx.Store.GetToken()
+	if err != nil {
+		logx.Errorf("从数据库加载token失败: %v", err)
+	}
+
+	// 如果数据库没有，从配置文件加载
+	if accessToken == "" || refreshToken == "" {
+		accessToken = svcCtx.Config.Auth115.AccessToken
+		refreshToken = svcCtx.Config.Auth115.RefreshToken
+	}
+
 	if accessToken != "" && refreshToken != "" {
 		m.authInfo = &types.Auth115Info{
 			AccessToken:  accessToken,
@@ -541,34 +565,47 @@ func (m *Auth115Manager) downloadFile(FolderName string, fileID string, fileName
 		return nil
 	}
 
+	// 初始化下载进度
+	progress := &DownloadProgress{
+		FileName:  fileName,
+		FileSize:  fileSize,
+		StartTime: time.Now(),
+		LastTime:  time.Now(),
+	}
+	m.SetDownloadProgress(fileID, progress)
+
+	// 记录任务历史
+	m.svcCtx.Store.AddTaskHistory(downloadURL, fileID, fileName, fileSize, 1) // status=1 下载中
+
 	request, err := http.NewRequest("GET", downloadURL, nil)
 	if err != nil {
+		m.RemoveDownloadProgress(fileID)
+		m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 3) // status=3 失败
 		return fmt.Errorf("创建下载请求失败: %v", err)
 	}
 
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
+		m.RemoveDownloadProgress(fileID)
+		m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 3) // status=3 失败
 		return fmt.Errorf("发送下载请求失败: %v", err)
 	}
 	defer response.Body.Close()
 
 	if response.StatusCode != http.StatusOK {
+		m.RemoveDownloadProgress(fileID)
+		m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 3) // status=3 失败
 		return fmt.Errorf("下载请求失败，状态码: %d", response.StatusCode)
 	}
 
 	file, err := os.Create(filePath)
 	if err != nil {
+		m.RemoveDownloadProgress(fileID)
+		m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 3) // status=3 失败
 		return fmt.Errorf("创建文件失败: %v", err)
 	}
 	defer file.Close()
-
-	progress := &Progress{
-		Total:     fileSize,
-		Current:   0,
-		StartTime: time.Now(),
-		FileName:  fileName,
-	}
 
 	reader := &ProgressReader{
 		Reader:     response.Body,
@@ -576,14 +613,18 @@ func (m *Auth115Manager) downloadFile(FolderName string, fileID string, fileName
 		UpdateChan: make(chan int64, 100),
 	}
 
-	go progress.UpdateProgress(reader.UpdateChan)
+	go progress.UpdateProgress(reader.UpdateChan, m, fileID)
 
 	_, err = io.Copy(file, reader)
 	if err != nil {
+		m.RemoveDownloadProgress(fileID)
+		m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 3) // status=3 失败
 		return fmt.Errorf("写入文件失败: %v", err)
 	}
 
 	close(reader.UpdateChan)
+	m.RemoveDownloadProgress(fileID)
+	m.svcCtx.Store.UpdateTaskHistoryComplete(downloadURL, 2) // status=2 完成
 
 	logx.Infof("文件下载完成: %s", filePath)
 	return nil
@@ -601,32 +642,28 @@ type Progress struct {
 
 type ProgressReader struct {
 	Reader     io.Reader
-	Progress   *Progress
+	Progress   *DownloadProgress
 	UpdateChan chan int64
 }
 
 func (pr *ProgressReader) Read(p []byte) (int, error) {
-	if pr.Progress.Stopped {
-		return 0, fmt.Errorf("下载已停止：速度过慢")
-	}
-
 	n, err := pr.Reader.Read(p)
 	if n > 0 {
-		pr.Progress.Current += int64(n)
+		pr.Progress.Downloaded += int64(n)
 		select {
-		case pr.UpdateChan <- pr.Progress.Current:
+		case pr.UpdateChan <- pr.Progress.Downloaded:
 		default:
 		}
 	}
 	return n, err
 }
 
-func (p *Progress) UpdateProgress(updateChan chan int64) {
+func (p *DownloadProgress) UpdateProgress(updateChan chan int64, manager *Auth115Manager, fileID string) {
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
 
 	p.LastTime = time.Now()
-	p.LastBytes = p.Current
+	p.LastBytes = p.Downloaded
 
 	for {
 		select {
@@ -635,35 +672,43 @@ func (p *Progress) UpdateProgress(updateChan chan int64) {
 				p.displayProgress(current)
 				return
 			}
-			p.Current = current
+			p.Downloaded = current
 		case <-ticker.C:
 			now := time.Now()
 			timeDiff := now.Sub(p.LastTime).Seconds()
 
 			if timeDiff > 0 {
-				speed := float64(p.Current-p.LastBytes) / timeDiff
+				speed := float64(p.Downloaded-p.LastBytes) / timeDiff
 
+				// 检查速度是否过慢（小于1KB/s且下载时间超过1小时）
 				if speed < 1024 && now.Sub(p.StartTime).Hours() >= 1 {
-					p.Stopped = true
 					logx.Errorf("下载速度过慢，已停止下载: %s (速度: %.2f KB/s)", p.FileName, speed/1024)
 					return
 				}
 
+				p.Speed = speed / 1024 / 1024 // 转换为 MB/s
 				p.LastTime = now
-				p.LastBytes = p.Current
+				p.LastBytes = p.Downloaded
 			}
 
-			p.displayProgress(p.Current)
+			if p.FileSize > 0 {
+				p.Percent = float64(p.Downloaded) / float64(p.FileSize) * 100
+			}
+
+			// 更新进度到 manager
+			manager.SetDownloadProgress(fileID, p)
+
+			p.displayProgress(p.Downloaded)
 		}
 	}
 }
 
-func (p *Progress) displayProgress(current int64) {
+func (p *DownloadProgress) displayProgress(current int64) {
 	now := time.Now()
 	duration := now.Sub(p.StartTime).Seconds()
 	if duration > 0 {
 		speed := float64(current) / duration / 1024 / 1024
-		progress := float64(current) / float64(p.Total) * 100
+		progress := float64(current) / float64(p.FileSize) * 100
 		logx.Infof("下载进度 [%s]: %.2f%% (%.2f MB/s)", p.FileName, progress, speed)
 	}
 }
@@ -883,4 +928,98 @@ func (m *Auth115Manager) InitFolder() {
 		logx.Errorf("创建115文件夹失败: %v", err)
 		m.search115Folder()
 	}
+}
+
+// SetToken 设置新的 token 并保存到数据库
+func (m *Auth115Manager) SetToken(accessToken, refreshToken string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	// 保存到数据库
+	if err := m.svcCtx.Store.SaveToken(accessToken, refreshToken); err != nil {
+		return fmt.Errorf("保存token到数据库失败: %v", err)
+	}
+
+	// 更新内存
+	m.authInfo = &types.Auth115Info{
+		AccessToken:  accessToken,
+		RefreshToken: refreshToken,
+		ExpiresIn:    7200,
+	}
+	m.lastRefreshAt = time.Now()
+	request115.SetAccessToken(accessToken)
+
+	logx.Info("Token 已更新并保存到数据库")
+	return nil
+}
+
+// GetTokenStatus 获取 token 状态
+func (m *Auth115Manager) GetTokenStatus() (configured bool, valid bool, expiresAt string, message string) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	if m.authInfo == nil {
+		return false, false, "", "未配置Token"
+	}
+
+	configured = true
+	expiresAtTime := m.lastRefreshAt.Add(time.Duration(m.authInfo.ExpiresIn) * time.Second)
+	expiresAt = expiresAtTime.Format("2006-01-02 15:04:05")
+
+	// 检查是否过期
+	if time.Now().After(expiresAtTime) {
+		return configured, false, expiresAt, "Token已过期，请重新配置"
+	}
+
+	// 检查是否即将过期（5分钟内）
+	if time.Now().Add(5 * time.Minute).After(expiresAtTime) {
+		return configured, true, expiresAt, "Token即将过期，建议刷新"
+	}
+
+	return configured, true, expiresAt, "Token有效"
+}
+
+// GetDownloadProgress 获取当前下载进度
+func (m *Auth115Manager) GetDownloadProgress() []DownloadProgress {
+	var progresses []DownloadProgress
+
+	m.downloadProgressMap.Range(func(key, value interface{}) bool {
+		if p, ok := value.(*DownloadProgress); ok {
+			progresses = append(progresses, *p)
+		}
+		return true
+	})
+
+	return progresses
+}
+
+// SetDownloadProgress 设置下载进度
+func (m *Auth115Manager) SetDownloadProgress(fileID string, progress *DownloadProgress) {
+	m.downloadProgressMap.Store(fileID, progress)
+}
+
+// RemoveDownloadProgress 移除下载进度
+func (m *Auth115Manager) RemoveDownloadProgress(fileID string) {
+	m.downloadProgressMap.Delete(fileID)
+}
+
+// GetCloudTasks 获取云下载任务列表
+func (m *Auth115Manager) GetCloudTasks() AllTasks {
+	m.fileMutex.Lock()
+	defer m.fileMutex.Unlock()
+
+	tasks := make(AllTasks, len(m.CloudTask))
+	copy(tasks, m.CloudTask)
+	return tasks
+}
+
+// RemovePendingTask 删除待下载任务
+func (m *Auth115Manager) RemovePendingTask(url string) error {
+	m.removeFileInfo(url)
+	return nil
+}
+
+// RefreshCloudTasks 手动刷新云任务列表
+func (m *Auth115Manager) RefreshCloudTasks() {
+	m.DoOnceWithCooldownPoll()
 }

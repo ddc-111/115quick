@@ -34,16 +34,58 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: Download.AddDownloadLinkHandler(serverCtx),
 			},
 			{
+				// 获取云下载任务列表
+				Method:  http.MethodGet,
+				Path:    "/api/getCloudTasks",
+				Handler: Download.GetCloudTasksHandler(serverCtx),
+			},
+			{
+				// 获取下载进度
+				Method:  http.MethodGet,
+				Path:    "/api/getDownloadProgress",
+				Handler: Download.GetDownloadProgressHandler(serverCtx),
+			},
+			{
 				// 获取服务器信息
 				Method:  http.MethodGet,
 				Path:    "/api/getServerInfo",
 				Handler: Download.GetServerInfoHandler(serverCtx),
 			},
 			{
+				// 获取任务历史
+				Method:  http.MethodGet,
+				Path:    "/api/getTaskHistory",
+				Handler: Download.GetTaskHistoryHandler(serverCtx),
+			},
+			{
+				// 获取Token状态
+				Method:  http.MethodGet,
+				Path:    "/api/getTokenStatus",
+				Handler: Download.GetTokenStatusHandler(serverCtx),
+			},
+			{
+				// 手动刷新任务列表
+				Method:  http.MethodPost,
+				Path:    "/api/refreshTasks",
+				Handler: Download.RefreshTasksHandler(serverCtx),
+			},
+			{
+				// 删除待下载任务
+				Method:  http.MethodPost,
+				Path:    "/api/removeDownloadTask",
+				Handler: Download.RemoveDownloadTaskHandler(serverCtx),
+			},
+			{
 				// 设置下载模式
 				Method:  http.MethodPost,
 				Path:    "/api/setDownloadMode",
 				Handler: Download.SetDownloadModeHandler(serverCtx),
+			},
+			{
+				// 设置115 Token
+				Method:  http.MethodPost,
+				Path:    "/api/setToken",
+				Handler: Download.SetTokenHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/v1/Download"),

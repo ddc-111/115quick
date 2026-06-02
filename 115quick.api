@@ -20,17 +20,83 @@ type (
 		AuthPw string `json:"authPw"`
 	}
 	AddAuthPwResp  {}
-	NilResp  {}
+	NilResp {
+		Success bool   `json:"success"`
+		Message string `json:"message,omitempty"`
+	}
 	SetDownloadModeReq {
 		Mode int64 `json:"mode"` //默认只下载视频 mode为1是下载全部
 	}
 	StartReNameReq {
-		Mode int64 `json:"mode"` //重命名模式 0全量重命名 1增量重命名
-		FolderID      string `json:"folder_id,optional"`     // 起始文件夹ID，如果为空则从根目录开始
-		FilePattern   string `json:"file_pattern,optional"`  // 文件模式正则表达式，默认为(?i)[a-z]+-\d+
+		Mode          int64  `json:"mode"` //重命名模式 0全量重命名 1增量重命名
+		FolderID      string `json:"folder_id,optional"` // 起始文件夹ID，如果为空则从根目录开始
+		FilePattern   string `json:"file_pattern,optional"` // 文件模式正则表达式，默认为(?i)[a-z]+-\d+
 		DeleteOthers  bool   `json:"delete_others,optional"` // 是否删除其他文件
-		RenameToMatch bool   `json:"rename_match,optional"`  // 是否将文件重命名为匹配项
+		RenameToMatch bool   `json:"rename_match,optional"` // 是否将文件重命名为匹配项
 	}
+	SetTokenReq {
+		AccessToken  string `json:"accessToken"`
+		RefreshToken string `json:"refreshToken"`
+	}
+	TokenStatusReq  {}
+	TokenStatusResp {
+		Configured bool   `json:"configured"` // 是否已配置
+		Valid      bool   `json:"valid"` // 是否有效
+		ExpiresAt  string `json:"expiresAt"` // 过期时间
+		Message    string `json:"message"` // 状态消息
+	}
+	DownloadProgressReq  {}
+	DownloadProgressItem {
+		FileName   string  `json:"fileName"`
+		FileSize   int64   `json:"fileSize"`
+		Downloaded int64   `json:"downloaded"`
+		Speed      float64 `json:"speed"` // MB/s
+		Percent    float64 `json:"percent"` // 0-100
+		StartTime  string  `json:"startTime"`
+	}
+	DownloadProgressResp {
+		Downloads []DownloadProgressItem `json:"downloads"`
+	}
+	CloudTasksReq  {}
+	CloudTaskItem {
+		InfoHash     string  `json:"infoHash"`
+		Name         string  `json:"name"`
+		Size         int64   `json:"size"`
+		Status       int     `json:"status"` // -1=失败 0=分配中 1=下载中 2=完成
+		PercentDone  float64 `json:"percentDone"`
+		RateDownload int     `json:"rateDownload"` // bytes/s
+		AddTime      string  `json:"addTime"`
+		URL          string  `json:"url"`
+	}
+	CloudTasksResp {
+		Tasks []CloudTaskItem `json:"tasks"`
+		Count int             `json:"count"`
+	}
+	TaskHistoryReq {
+		Page     int `json:"page,optional,default=1"`
+		PageSize int `json:"pageSize,optional,default=20"`
+	}
+	TaskHistoryItem {
+		ID           int64   `json:"id"`
+		URL          string  `json:"url"`
+		Name         string  `json:"name"`
+		Size         int64   `json:"size"`
+		Status       int     `json:"status"` // 0=等待 1=下载中 2=完成 3=失败
+		Progress     float64 `json:"progress"`
+		ErrorMsg     string  `json:"errorMsg"`
+		AddTime      string  `json:"addTime"`
+		CompleteTime string  `json:"completeTime"`
+	}
+	TaskHistoryResp {
+		Items    []TaskHistoryItem `json:"items"`
+		Total    int               `json:"total"`
+		Page     int               `json:"page"`
+		PageSize int               `json:"pageSize"`
+	}
+	RemoveDownloadTaskReq {
+		URL string `json:"url"`
+	}
+	RefreshTasksReq  {}
 )
 
 @server (
@@ -57,5 +123,33 @@ service quick {
 	@doc "重命名"
 	@handler StartReName
 	post /api/StartReName (StartReNameReq) returns (NilResp)
+
+	@doc "设置115 Token"
+	@handler SetToken
+	post /api/setToken (SetTokenReq) returns (NilResp)
+
+	@doc "获取Token状态"
+	@handler GetTokenStatus
+	get /api/getTokenStatus (TokenStatusReq) returns (TokenStatusResp)
+
+	@doc "获取下载进度"
+	@handler GetDownloadProgress
+	get /api/getDownloadProgress (DownloadProgressReq) returns (DownloadProgressResp)
+
+	@doc "获取云下载任务列表"
+	@handler GetCloudTasks
+	get /api/getCloudTasks (CloudTasksReq) returns (CloudTasksResp)
+
+	@doc "获取任务历史"
+	@handler GetTaskHistory
+	get /api/getTaskHistory (TaskHistoryReq) returns (TaskHistoryResp)
+
+	@doc "删除待下载任务"
+	@handler RemoveDownloadTask
+	post /api/removeDownloadTask (RemoveDownloadTaskReq) returns (NilResp)
+
+	@doc "手动刷新任务列表"
+	@handler RefreshTasks
+	post /api/refreshTasks (RefreshTasksReq) returns (NilResp)
 }
 

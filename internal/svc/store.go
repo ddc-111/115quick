@@ -37,6 +37,30 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS token_config (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		access_token TEXT NOT NULL,
+		refresh_token TEXT NOT NULL,
+		updated_at DATETIME NOT NULL
+	)`); err != nil {
+		return nil, err
+	}
+
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS task_history (
+		id INTEGER PRIMARY KEY AUTOINCREMENT,
+		url TEXT NOT NULL,
+		info_hash TEXT DEFAULT '',
+		name TEXT DEFAULT '',
+		size INTEGER DEFAULT 0,
+		status INTEGER NOT NULL DEFAULT 0,
+		progress REAL DEFAULT 0,
+		error_msg TEXT DEFAULT '',
+		add_time DATETIME NOT NULL,
+		complete_time DATETIME
+	)`); err != nil {
+		return nil, err
+	}
+
 	return &Store{db: db}, nil
 }
 
@@ -71,4 +95,98 @@ func (s *Store) GetAllFileInfos() ([]FileInfo, error) {
 
 func (s *Store) Close() error {
 	return s.db.Close()
+}
+
+// Token 相关方法
+
+func (s *Store) SaveToken(accessToken, refreshToken string) error {
+	_, err := s.db.Exec(`INSERT OR REPLACE INTO token_config (id, access_token, refresh_token, updated_at) 
+		VALUES (1, ?, ?, ?)`, accessToken, refreshToken, time.Now())
+	return err
+}
+
+func (s *Store) GetToken() (accessToken, refreshToken string, err error) {
+	row := s.db.QueryRow("SELECT access_token, refresh_token FROM token_config WHERE id = 1")
+	err = row.Scan(&accessToken, &refreshToken)
+	if err == sql.ErrNoRows {
+		return "", "", nil
+	}
+	return
+}
+
+// 任务历史相关方法
+
+func (s *Store) AddTaskHistory(url, infoHash, name string, size int64, status int) error {
+	_, err := s.db.Exec(`INSERT INTO task_history (url, info_hash, name, size, status, add_time) 
+		VALUES (?, ?, ?, ?, ?, ?)`, url, infoHash, name, size, status, time.Now())
+	return err
+}
+
+func (s *Store) UpdateTaskHistoryStatus(url string, status int, progress float64, errorMsg string) error {
+	_, err := s.db.Exec(`UPDATE task_history SET status = ?, progress = ?, error_msg = ? WHERE url = ?`,
+		status, progress, errorMsg, url)
+	return err
+}
+
+func (s *Store) UpdateTaskHistoryComplete(url string, status int) error {
+	_, err := s.db.Exec(`UPDATE task_history SET status = ?, complete_time = ? WHERE url = ?`,
+		status, time.Now(), url)
+	return err
+}
+
+func (s *Store) GetTaskHistory(page, pageSize int) (items []struct {
+	ID           int64
+	URL          string
+	Name         string
+	Size         int64
+	Status       int
+	Progress     float64
+	ErrorMsg     string
+	AddTime      time.Time
+	CompleteTime *time.Time
+}, total int, err error) {
+	// 获取总数
+	err = s.db.QueryRow("SELECT COUNT(*) FROM task_history").Scan(&total)
+	if err != nil {
+		return
+	}
+
+	// 分页查询
+	offset := (page - 1) * pageSize
+	rows, err := s.db.Query(`SELECT id, url, name, size, status, progress, error_msg, add_time, complete_time 
+		FROM task_history ORDER BY add_time DESC LIMIT ? OFFSET ?`, pageSize, offset)
+	if err != nil {
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var item struct {
+			ID           int64
+			URL          string
+			Name         string
+			Size         int64
+			Status       int
+			Progress     float64
+			ErrorMsg     string
+			AddTime      time.Time
+			CompleteTime *time.Time
+		}
+		if err = rows.Scan(&item.ID, &item.URL, &item.Name, &item.Size, &item.Status,
+			&item.Progress, &item.ErrorMsg, &item.AddTime, &item.CompleteTime); err != nil {
+			return
+		}
+		items = append(items, item)
+	}
+	return
+}
+
+func (s *Store) RemoveTaskHistory(url string) error {
+	_, err := s.db.Exec("DELETE FROM task_history WHERE url = ?", url)
+	return err
+}
+
+func (s *Store) ClearTaskHistory() error {
+	_, err := s.db.Exec("DELETE FROM task_history")
+	return err
 }
