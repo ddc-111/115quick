@@ -48,11 +48,14 @@ func (m *SMBManager) Connect(cfg *SMBConfig) error {
 		m.Disconnect()
 	}
 
+	// 尝试连接
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
 	if err != nil {
 		return fmt.Errorf("无法连接到SMB服务器 %s:445，请检查：1.服务器IP是否正确 2.SMB服务是否开启 3.防火墙是否允许445端口 (错误: %v)", cfg.Host, err)
 	}
 
+	// 创建 SMB dialer
+	// Windows 共享无密码时，密码设为空字符串
 	d := &smb2.Dialer{
 		Initiator: &smb2.NTLMInitiator{
 			User:     cfg.Username,
@@ -63,19 +66,52 @@ func (m *SMBManager) Connect(cfg *SMBConfig) error {
 	session, err := d.Dial(conn)
 	if err != nil {
 		conn.Close()
-		return fmt.Errorf("SMB会话建立失败，请检查用户名和密码是否正确 (错误: %v)", err)
+		return fmt.Errorf("SMB会话建立失败: %v。Windows共享请确认：1.用户名是否正确 2.共享是否开启密码保护", err)
 	}
 
 	share, err := session.Mount(cfg.Share)
 	if err != nil {
 		session.Logoff()
-		return fmt.Errorf("挂载SMB共享 '%s' 失败，请检查共享名称是否正确 (错误: %v)", cfg.Share, err)
+		return fmt.Errorf("挂载SMB共享 '%s' 失败: %v。请检查共享名称是否正确（如 C、D、Downloads）", cfg.Share, err)
 	}
 
 	m.config = cfg
 	m.session = session
 	m.share = share
 	m.connected = true
+
+	return nil
+}
+
+func (m *SMBManager) TestConnection(cfg *SMBConfig) error {
+	if cfg.Host == "" || cfg.Share == "" {
+		return fmt.Errorf("SMB服务器地址和共享名称不能为空")
+	}
+
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("无法连接到SMB服务器 %s:445: %v", cfg.Host, err)
+	}
+	defer conn.Close()
+
+	d := &smb2.Dialer{
+		Initiator: &smb2.NTLMInitiator{
+			User:     cfg.Username,
+			Password: cfg.Password,
+		},
+	}
+
+	session, err := d.Dial(conn)
+	if err != nil {
+		return fmt.Errorf("SMB会话建立失败: %v", err)
+	}
+	defer session.Logoff()
+
+	share, err := session.Mount(cfg.Share)
+	if err != nil {
+		return fmt.Errorf("挂载共享 '%s' 失败: %v", cfg.Share, err)
+	}
+	defer share.Umount()
 
 	return nil
 }
