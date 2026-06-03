@@ -17,15 +17,29 @@
 </template>
 
 <script setup lang="ts">
-import { onMounted } from 'vue'
+import { onMounted, onUnmounted } from 'vue'
+import { useRouter } from 'vue-router'
 import { useServerStore } from '@/stores/server'
 import AppLayout from '@/components/AppLayout.vue'
 import ServerSetup from '@/views/ServerSetup.vue'
 
 const serverStore = useServerStore()
+const router = useRouter()
+
+// 处理来自background的消息
+function handleMessage(message: any) {
+  if (message.type === 'NAVIGATE_TO' && message.path) {
+    router.push(message.path);
+  }
+}
 
 onMounted(() => {
   document.documentElement.classList.add('dark')
+  chrome.runtime.onMessage.addListener(handleMessage);
+})
+
+onUnmounted(() => {
+  chrome.runtime.onMessage.removeListener(handleMessage);
 })
 </script>
 
