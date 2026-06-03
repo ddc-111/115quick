@@ -28,6 +28,10 @@
         <el-icon><Setting /></el-icon>
         <span>设置</span>
       </el-menu-item>
+      <el-menu-item index="/logs">
+        <el-icon><Document /></el-icon>
+        <span>日志</span>
+      </el-menu-item>
     </el-menu>
   </div>
 </template>
@@ -35,7 +39,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
 import { useRoute } from 'vue-router'
-import { Monitor, Key, Download, Clock, Setting } from '@element-plus/icons-vue'
+import { Monitor, Key, Download, Clock, Setting, Document } from '@element-plus/icons-vue'
 
 const route = useRoute()
 const activeMenu = computed(() => route.path)

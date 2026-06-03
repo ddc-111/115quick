@@ -138,6 +138,7 @@ async function refreshData() {
     pendingCount.value = (serverData as any).downFileInfoList?.length || 0
   } catch (error) {
     console.error('刷新数据失败:', error)
+    ElMessage.error('刷新数据失败')
   } finally {
     loading.value = false
   }

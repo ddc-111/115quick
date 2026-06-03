@@ -45,3 +45,7 @@ export function testSMBConnection(params: {
 }) {
   return request.post('/api/testSMBConnection', params)
 }
+
+export function getServerLogs(type: string = 'stdout', lines: number = 200) {
+  return request.get('/api/getServerLogs', { params: { type, lines } })
+}
