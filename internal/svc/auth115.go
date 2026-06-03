@@ -764,7 +764,7 @@ func (m *Auth115Manager) GetFolderFiles(folderID string, fileType int) (*types.G
 	params.Set("asc", "0")
 	params.Set("o", "file_name")
 	params.Set("stdir", "1")
-	params.Set("cur", "1")
+	params.Set("show_dir", "1")
 
 	apiURL := "https://proapi.115.com/open/ufile/files?" + params.Encode()
 	request, err := http.NewRequest("GET", apiURL, nil)

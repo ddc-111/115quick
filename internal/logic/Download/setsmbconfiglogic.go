@@ -30,42 +30,35 @@ func (l *SetSMBConfigLogic) SetSMBConfig(req *types.SetSMBConfigReq) (resp *type
 		if req.Host == "" || req.Share == "" {
 			return nil, fmt.Errorf("SMB host and share are required when enabling SMB")
 		}
-		if req.MountPoint == "" {
-			return nil, fmt.Errorf("mount point is required when enabling SMB")
-		}
 
 		smbCfg := &smb.SMBConfig{
-			Host:       req.Host,
-			Share:      req.Share,
-			Username:   req.Username,
-			Password:   req.Password,
-			MountPoint: req.MountPoint,
+			Host:     req.Host,
+			Share:    req.Share,
+			Username: req.Username,
+			Password: req.Password,
 		}
 
-		if err := l.svcCtx.SMB.Mount(smbCfg); err != nil {
-			return nil, fmt.Errorf("failed to mount SMB share: %v", err)
+		if err := l.svcCtx.SMB.Connect(smbCfg); err != nil {
+			return nil, fmt.Errorf("failed to connect to SMB server: %v", err)
 		}
 
-		l.svcCtx.Auth115.SetDownloadPath(req.MountPoint)
-		logx.Infof("SMB share mounted at %s", req.MountPoint)
+		logx.Infof("SMB server connected: %s/%s", req.Host, req.Share)
 	} else {
-		if l.svcCtx.SMB.IsMounted() {
-			if err := l.svcCtx.SMB.Unmount(); err != nil {
-				return nil, fmt.Errorf("failed to unmount SMB share: %v", err)
+		if l.svcCtx.SMB.IsConnected() {
+			if err := l.svcCtx.SMB.Disconnect(); err != nil {
+				return nil, fmt.Errorf("failed to disconnect SMB: %v", err)
 			}
 		}
 
-		l.svcCtx.Auth115.SetDownloadPath(l.svcCtx.Config.Auth115.DownloadPath)
-		logx.Info("SMB disabled, using default download path")
+		logx.Info("SMB disabled, disconnected")
 	}
 
 	cfg := svc.SMBConfigData{
-		Enabled:    req.Enabled,
-		Host:       req.Host,
-		Share:      req.Share,
-		Username:   req.Username,
-		Password:   req.Password,
-		MountPoint: req.MountPoint,
+		Enabled:  req.Enabled,
+		Host:     req.Host,
+		Share:    req.Share,
+		Username: req.Username,
+		Password: req.Password,
 	}
 	if err := l.svcCtx.Store.SaveSMBConfig(cfg); err != nil {
 		return nil, fmt.Errorf("failed to save SMB config: %v", err)

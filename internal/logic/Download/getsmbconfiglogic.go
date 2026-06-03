@@ -31,12 +31,11 @@ func (l *GetSMBConfigLogic) GetSMBConfig(req *types.GetSMBConfigReq) (resp *type
 	}
 
 	return &types.GetSMBConfigResp{
-		Enabled:    cfg.Enabled,
-		Host:       cfg.Host,
-		Share:      cfg.Share,
-		Username:   cfg.Username,
-		Password:   cfg.Password,
-		MountPoint: cfg.MountPoint,
-		IsMounted:  l.svcCtx.SMB.IsMounted(),
+		Enabled:     cfg.Enabled,
+		Host:        cfg.Host,
+		Share:       cfg.Share,
+		Username:    cfg.Username,
+		Password:    cfg.Password,
+		IsConnected: l.svcCtx.SMB.IsConnected(),
 	}, nil
 }

@@ -7,6 +7,9 @@
           <el-icon><Refresh /></el-icon>
           刷新任务
         </el-button>
+        <el-button type="warning" @click="handleClearCompleted">
+          清空已完成
+        </el-button>
       </div>
     </div>
 
@@ -28,13 +31,25 @@
 
     <!-- 云下载任务 -->
     <div class="card">
-      <h3 style="margin-bottom: 16px">云下载任务 ({{ cloudTasks.length }})</h3>
-      <div v-if="cloudTasks.length === 0" class="empty-state">
+      <div class="section-header">
+        <h3>云下载任务 ({{ filteredCloudTasks.length }})</h3>
+        <div class="filter-bar">
+          <el-select v-model="cloudTaskFilter" placeholder="筛选状态" clearable style="width: 120px">
+            <el-option label="全部" value="" />
+            <el-option label="下载中" value="1" />
+            <el-option label="等待中" value="0" />
+            <el-option label="已完成" value="2" />
+            <el-option label="失败" value="-1" />
+          </el-select>
+        </div>
+      </div>
+      
+      <div v-if="filteredCloudTasks.length === 0" class="empty-state">
         <div class="empty-icon">☁️</div>
         <p>暂无云下载任务</p>
       </div>
       <div v-else>
-        <div v-for="task in cloudTasks" :key="task.infoHash" class="task-item">
+        <div v-for="task in filteredCloudTasks" :key="task.infoHash" class="task-item">
           <div class="task-header">
             <span class="task-name">{{ task.name || task.url }}</span>
             <div>
@@ -66,7 +81,10 @@
 
     <!-- 待下载队列 -->
     <div class="card">
-      <h3 style="margin-bottom: 16px">待下载队列 ({{ pendingTasks.length }})</h3>
+      <div class="section-header">
+        <h3>待下载队列 ({{ pendingTasks.length }})</h3>
+      </div>
+      
       <div v-if="pendingTasks.length === 0" class="empty-state">
         <div class="empty-icon">📋</div>
         <p>暂无待下载任务</p>
@@ -89,10 +107,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, computed, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Refresh } from '@element-plus/icons-vue'
-import { getServerInfo } from '@/api/server'
+import { getServerInfo, clearCompletedTasks } from '@/api/server'
 import { getDownloadProgress, getCloudTasks, removeDownloadTask, refreshTasks } from '@/api/token'
 import { formatFileSize, formatSpeed, getStatusText, getStatusType } from '@/utils/format'
 
@@ -100,7 +118,15 @@ const refreshing = ref(false)
 const downloadProgress = ref<any[]>([])
 const cloudTasks = ref<any[]>([])
 const pendingTasks = ref<any[]>([])
+const cloudTaskFilter = ref('')
 let timer: ReturnType<typeof setInterval> | null = null
+
+// 筛选后的云下载任务
+const filteredCloudTasks = computed(() => {
+  if (!cloudTaskFilter.value) return cloudTasks.value
+  const filterStatus = parseInt(cloudTaskFilter.value)
+  return cloudTasks.value.filter(task => task.status === filterStatus)
+})
 
 async function loadData() {
   try {
@@ -145,6 +171,21 @@ async function handleRemove(url: string) {
   }
 }
 
+async function handleClearCompleted() {
+  try {
+    await ElMessageBox.confirm('确定要清空所有已完成的任务吗？', '确认', {
+      type: 'warning'
+    })
+    await clearCompletedTasks()
+    ElMessage.success('已完成任务已清空')
+    loadData()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('清空失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadData()
   timer = setInterval(loadData, 10000)
@@ -158,6 +199,22 @@ onUnmounted(() => {
 </script>
 
 <style lang="scss" scoped>
+.section-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 16px;
+
+  h3 {
+    margin: 0;
+  }
+}
+
+.filter-bar {
+  display: flex;
+  gap: 8px;
+}
+
 .speed {
   color: var(--el-color-primary);
   font-weight: 600;

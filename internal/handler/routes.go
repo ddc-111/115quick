@@ -153,6 +153,30 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/api/getDefaultDownloadDir",
 				Handler: Download.GetDefaultDownloadDirHandler(serverCtx),
 			},
+			{
+				// 浏览SMB文件
+				Method:  http.MethodGet,
+				Path:    "/api/smb/browse",
+				Handler: Download.SMBBrowseHandler(serverCtx),
+			},
+			{
+				// 从SMB下载文件
+				Method:  http.MethodPost,
+				Path:    "/api/smb/download",
+				Handler: Download.SMBDownloadHandler(serverCtx),
+			},
+			{
+				// 清空任务历史
+				Method:  http.MethodPost,
+				Path:    "/api/clearTaskHistory",
+				Handler: Download.ClearTaskHistoryHandler(serverCtx),
+			},
+			{
+				// 清空已完成任务
+				Method:  http.MethodPost,
+				Path:    "/api/clearCompletedTasks",
+				Handler: Download.ClearCompletedTasksHandler(serverCtx),
+			},
 		},
 		rest.WithPrefix("/v1/Download"),
 	)

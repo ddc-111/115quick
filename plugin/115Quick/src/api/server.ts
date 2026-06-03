@@ -32,7 +32,6 @@ export function setSMBConfig(params: {
   share?: string
   username?: string
   password?: string
-  mountPoint?: string
 }) {
   return request.post('/api/setSMBConfig', params)
 }
@@ -44,6 +43,14 @@ export function testSMBConnection(params: {
   password?: string
 }) {
   return request.post('/api/testSMBConnection', params)
+}
+
+export function smbBrowse(path: string = '') {
+  return request.get('/api/smb/browse', { params: { path } })
+}
+
+export function smbDownload(remotePath: string, localPath?: string) {
+  return request.post('/api/smb/download', { remotePath, localPath })
 }
 
 export function getServerLogs(type: string = 'stdout', lines: number = 200) {
@@ -76,4 +83,12 @@ export function setDefaultDownloadDir(folderId: string, folderName: string) {
 
 export function getDefaultDownloadDir() {
   return request.get('/api/getDefaultDownloadDir')
+}
+
+export function clearTaskHistory() {
+  return request.post('/api/clearTaskHistory')
+}
+
+export function clearCompletedTasks() {
+  return request.post('/api/clearCompletedTasks')
 }

@@ -2,11 +2,27 @@
   <div class="task-history page-container">
     <div class="page-header">
       <h1 class="page-title">任务历史</h1>
+      <div>
+        <el-button type="danger" @click="handleClearAll">
+          清空历史
+        </el-button>
+      </div>
     </div>
 
     <div class="card">
+      <!-- 筛选栏 -->
+      <div class="filter-bar">
+        <el-select v-model="statusFilter" placeholder="筛选状态" clearable style="width: 120px" @change="handleFilterChange">
+          <el-option label="全部" value="" />
+          <el-option label="已完成" value="2" />
+          <el-option label="下载中" value="1" />
+          <el-option label="等待中" value="0" />
+          <el-option label="失败" value="3" />
+        </el-select>
+      </div>
+
       <el-table
-        :data="historyItems"
+        :data="filteredHistoryItems"
         style="width: 100%"
         :header-cell-style="{ background: 'var(--el-bg-color-overlay)', color: 'var(--el-text-color-primary)' }"
         :cell-style="{ background: 'var(--el-bg-color-overlay)', color: 'var(--el-text-color-primary)' }"
@@ -69,14 +85,24 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { getTaskHistory } from '@/api/token'
+import { clearTaskHistory } from '@/api/server'
 import { formatFileSize, getStatusText, getStatusType } from '@/utils/format'
 
 const historyItems = ref<any[]>([])
 const currentPage = ref(1)
 const pageSize = ref(20)
 const total = ref(0)
+const statusFilter = ref('')
+
+// 筛选后的历史记录
+const filteredHistoryItems = computed(() => {
+  if (!statusFilter.value) return historyItems.value
+  const filterStatus = parseInt(statusFilter.value)
+  return historyItems.value.filter(item => item.status === filterStatus)
+})
 
 async function loadHistory() {
   try {
@@ -86,6 +112,10 @@ async function loadHistory() {
   } catch (error) {
     console.error('加载历史记录失败:', error)
   }
+}
+
+function handleFilterChange() {
+  // 筛选变化时不需要重新加载，使用 computed 自动过滤
 }
 
 function handleSizeChange(size: number) {
@@ -99,12 +129,33 @@ function handleCurrentChange(page: number) {
   loadHistory()
 }
 
+async function handleClearAll() {
+  try {
+    await ElMessageBox.confirm('确定要清空所有任务历史吗？此操作不可恢复！', '确认', {
+      type: 'warning'
+    })
+    await clearTaskHistory()
+    ElMessage.success('任务历史已清空')
+    loadHistory()
+  } catch (error) {
+    if (error !== 'cancel') {
+      ElMessage.error('清空失败')
+    }
+  }
+}
+
 onMounted(() => {
   loadHistory()
 })
 </script>
 
 <style lang="scss" scoped>
+.filter-bar {
+  margin-bottom: 16px;
+  display: flex;
+  gap: 8px;
+}
+
 .pagination {
   margin-top: 16px;
   display: flex;

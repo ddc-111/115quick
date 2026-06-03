@@ -16,6 +16,5 @@ type Config struct {
 		Share    string `json:",optional"`
 		Username string `json:",optional"`
 		Password string `json:",optional"`
-		MountPoint string `json:",optional"`
 	}
 }

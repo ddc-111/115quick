@@ -41,7 +41,7 @@ func (l *GetCloudFilesLogic) GetCloudFiles(req *types.GetCloudFilesReq) (resp *t
 		files = append(files, types.CloudFile{
 			FileID:     item.FID,
 			FileName:   item.FN,
-			FileSize:   0,
+			FileSize:   item.FS,
 			IsDir:      isDir,
 			ParentID:   item.PID,
 			UpdateTime: fmt.Sprintf("%d", item.UPT),

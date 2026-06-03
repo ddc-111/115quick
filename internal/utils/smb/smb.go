@@ -2,116 +2,99 @@ package smb
 
 import (
 	"fmt"
+	"io"
+	"net"
 	"os"
-	"os/exec"
-	"runtime"
-	"strings"
+	"path/filepath"
+	"time"
+
+	"github.com/hirochachacha/go-smb2"
 )
 
 type SMBConfig struct {
-	Host       string `json:"host"`
-	Share      string `json:"share"`
-	Username   string `json:"username"`
-	Password   string `json:"password"`
-	MountPoint string `json:"mountPoint"`
+	Host     string `json:"host"`
+	Share    string `json:"share"`
+	Username string `json:"username"`
+	Password string `json:"password"`
+}
+
+type SMBFile struct {
+	Name    string    `json:"name"`
+	Size    int64     `json:"size"`
+	IsDir   bool      `json:"isDir"`
+	ModTime time.Time `json:"modTime"`
 }
 
 type SMBManager struct {
 	config    *SMBConfig
-	isMounted bool
+	session   *smb2.Session
+	share     *smb2.Share
+	connected bool
 }
 
 func NewSMBManager() *SMBManager {
 	return &SMBManager{
-		isMounted: false,
+		connected: false,
 	}
 }
 
-func (m *SMBManager) Mount(cfg *SMBConfig) error {
+func (m *SMBManager) Connect(cfg *SMBConfig) error {
 	if cfg.Host == "" || cfg.Share == "" {
 		return fmt.Errorf("SMB host and share are required")
 	}
 
-	if cfg.MountPoint == "" {
-		return fmt.Errorf("mount point is required")
+	// 断开现有连接
+	if m.connected {
+		m.Disconnect()
 	}
 
-	if err := os.MkdirAll(cfg.MountPoint, 0755); err != nil {
-		return fmt.Errorf("failed to create mount point: %v", err)
-	}
-
-	if m.isMounted {
-		if err := m.Unmount(); err != nil {
-			return fmt.Errorf("failed to unmount existing share: %v", err)
-		}
-	}
-
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		mountArgs := []string{"-t", "cifs"}
-		options := fmt.Sprintf("username=%s,password=%s,vers=3.0", cfg.Username, cfg.Password)
-		if cfg.Username == "" {
-			options = "guest,vers=3.0"
-		}
-		mountArgs = append(mountArgs, "-o", options)
-		uncPath := fmt.Sprintf("//%s/%s", cfg.Host, cfg.Share)
-		mountArgs = append(mountArgs, uncPath, cfg.MountPoint)
-		cmd = exec.Command("mount", mountArgs...)
-	case "windows":
-		uncPath := fmt.Sprintf("\\\\%s\\%s", cfg.Host, cfg.Share)
-		args := []string{"use", cfg.MountPoint, uncPath}
-		if cfg.Username != "" {
-			args = append(args, fmt.Sprintf("/user:%s", cfg.Username))
-			if cfg.Password != "" {
-				args = append(args, cfg.Password)
-			}
-		}
-		cmd = exec.Command("net", args...)
-	default:
-		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
-	}
-
-	output, err := cmd.CombinedOutput()
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
 	if err != nil {
-		return fmt.Errorf("mount failed: %s, error: %v", string(output), err)
+		return fmt.Errorf("failed to connect to SMB server: %v", err)
+	}
+
+	d := &smb2.Dialer{
+		Initiator: &smb2.NTLMInitiator{
+			User:     cfg.Username,
+			Password: cfg.Password,
+		},
+	}
+
+	session, err := d.Dial(conn)
+	if err != nil {
+		conn.Close()
+		return fmt.Errorf("failed to establish SMB session: %v", err)
+	}
+
+	share, err := session.Mount(cfg.Share)
+	if err != nil {
+		session.Logoff()
+		return fmt.Errorf("failed to mount SMB share: %v", err)
 	}
 
 	m.config = cfg
-	m.isMounted = true
+	m.session = session
+	m.share = share
+	m.connected = true
+
 	return nil
 }
 
-func (m *SMBManager) Unmount() error {
-	if !m.isMounted || m.config == nil {
-		return nil
+func (m *SMBManager) Disconnect() error {
+	if m.share != nil {
+		m.share.Umount()
+		m.share = nil
 	}
-
-	var cmd *exec.Cmd
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		cmd = exec.Command("umount", m.config.MountPoint)
-	case "windows":
-		cmd = exec.Command("net", "use", m.config.MountPoint, "/delete", "/y")
-	default:
-		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	if m.session != nil {
+		m.session.Logoff()
+		m.session = nil
 	}
-
-	output, err := cmd.CombinedOutput()
-	if err != nil {
-		if strings.Contains(string(output), "not mounted") || strings.Contains(string(output), "not found") {
-			m.isMounted = false
-			return nil
-		}
-		return fmt.Errorf("unmount failed: %s, error: %v", string(output), err)
-	}
-
-	m.isMounted = false
+	m.connected = false
 	return nil
 }
 
-func (m *SMBManager) IsMounted() bool {
-	return m.isMounted
+func (m *SMBManager) IsConnected() bool {
+	return m.connected
 }
 
 func (m *SMBManager) GetConfig() *SMBConfig {
@@ -123,44 +106,109 @@ func (m *SMBManager) TestConnection(cfg *SMBConfig) error {
 		return fmt.Errorf("SMB host and share are required")
 	}
 
-	switch runtime.GOOS {
-	case "linux", "darwin":
-		uncPath := fmt.Sprintf("//%s/%s", cfg.Host, cfg.Share)
-		args := []string{"-t", "cifs", "-o", "guest,vers=3.0"}
-		if cfg.Username != "" {
-			args = append(args, "-o", fmt.Sprintf("username=%s,password=%s,vers=3.0", cfg.Username, cfg.Password))
-		}
-		tempMount, err := os.MkdirTemp("", "smb-test-*")
-		if err != nil {
-			return fmt.Errorf("failed to create temp dir: %v", err)
-		}
-		defer os.Remove(tempMount)
-
-		args = append(args, uncPath, tempMount)
-		cmd := exec.Command("mount", args...)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("connection test failed: %s", string(output))
-		}
-		exec.Command("umount", tempMount).Run()
-		return nil
-	case "windows":
-		uncPath := fmt.Sprintf("\\\\%s\\%s", cfg.Host, cfg.Share)
-		args := []string{"use", uncPath}
-		if cfg.Username != "" {
-			args = append(args, fmt.Sprintf("/user:%s", cfg.Username))
-			if cfg.Password != "" {
-				args = append(args, cfg.Password)
-			}
-		}
-		cmd := exec.Command("net", args...)
-		output, err := cmd.CombinedOutput()
-		if err != nil {
-			return fmt.Errorf("connection test failed: %s", string(output))
-		}
-		exec.Command("net", "use", uncPath, "/delete", "/y").Run()
-		return nil
-	default:
-		return fmt.Errorf("unsupported OS: %s", runtime.GOOS)
+	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
+	if err != nil {
+		return fmt.Errorf("connection failed: %v", err)
 	}
+	defer conn.Close()
+
+	d := &smb2.Dialer{
+		Initiator: &smb2.NTLMInitiator{
+			User:     cfg.Username,
+			Password: cfg.Password,
+		},
+	}
+
+	session, err := d.Dial(conn)
+	if err != nil {
+		return fmt.Errorf("SMB session failed: %v", err)
+	}
+	defer session.Logoff()
+
+	share, err := session.Mount(cfg.Share)
+	if err != nil {
+		return fmt.Errorf("mount share failed: %v", err)
+	}
+	defer share.Umount()
+
+	return nil
+}
+
+func (m *SMBManager) ListFiles(path string) ([]SMBFile, error) {
+	if !m.connected || m.share == nil {
+		return nil, fmt.Errorf("not connected to SMB server")
+	}
+
+	if path == "" {
+		path = "."
+	}
+
+	entries, err := m.share.ReadDir(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list files: %v", err)
+	}
+
+	files := make([]SMBFile, 0, len(entries))
+	for _, entry := range entries {
+		files = append(files, SMBFile{
+			Name:    entry.Name(),
+			Size:    entry.Size(),
+			IsDir:   entry.IsDir(),
+			ModTime: entry.ModTime(),
+		})
+	}
+
+	return files, nil
+}
+
+func (m *SMBManager) DownloadFile(remotePath, localPath string) error {
+	if !m.connected || m.share == nil {
+		return fmt.Errorf("not connected to SMB server")
+	}
+
+	// 确保本地目录存在
+	localDir := filepath.Dir(localPath)
+	if err := os.MkdirAll(localDir, 0755); err != nil {
+		return fmt.Errorf("failed to create local directory: %v", err)
+	}
+
+	// 打开远程文件
+	srcFile, err := m.share.Open(remotePath)
+	if err != nil {
+		return fmt.Errorf("failed to open remote file: %v", err)
+	}
+	defer srcFile.Close()
+
+	// 创建本地文件
+	dstFile, err := os.Create(localPath)
+	if err != nil {
+		return fmt.Errorf("failed to create local file: %v", err)
+	}
+	defer dstFile.Close()
+
+	// 复制文件内容
+	_, err = io.Copy(dstFile, srcFile)
+	if err != nil {
+		return fmt.Errorf("failed to download file: %v", err)
+	}
+
+	return nil
+}
+
+func (m *SMBManager) GetFileInfo(path string) (*SMBFile, error) {
+	if !m.connected || m.share == nil {
+		return nil, fmt.Errorf("not connected to SMB server")
+	}
+
+	info, err := m.share.Stat(path)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get file info: %v", err)
+	}
+
+	return &SMBFile{
+		Name:    info.Name(),
+		Size:    info.Size(),
+		IsDir:   info.IsDir(),
+		ModTime: info.ModTime(),
+	}, nil
 }

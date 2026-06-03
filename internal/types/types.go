@@ -142,12 +142,11 @@ type TokenStatusResp struct {
 }
 
 type SetSMBConfigReq struct {
-	Enabled    bool   `json:"enabled"`
-	Host       string `json:"host,optional"`
-	Share      string `json:"share,optional"`
-	Username   string `json:"username,optional"`
-	Password   string `json:"password,optional"`
-	MountPoint string `json:"mountPoint,optional"`
+	Enabled  bool   `json:"enabled"`
+	Host     string `json:"host,optional"`
+	Share    string `json:"share,optional"`
+	Username string `json:"username,optional"`
+	Password string `json:"password,optional"`
 }
 
 type GetSMBConfigReq struct {
@@ -159,8 +158,7 @@ type GetSMBConfigResp struct {
 	Share      string `json:"share"`
 	Username   string `json:"username"`
 	Password   string `json:"password"`
-	MountPoint string `json:"mountPoint"`
-	IsMounted  bool   `json:"isMounted"`
+	IsConnected bool  `json:"isConnected"`
 }
 
 type TestSMBConnectionReq struct {
@@ -168,6 +166,34 @@ type TestSMBConnectionReq struct {
 	Share    string `json:"share"`
 	Username string `json:"username,optional"`
 	Password string `json:"password,optional"`
+}
+
+// SMB 文件浏览相关类型
+type SMBBrowseReq struct {
+	Path string `json:"path,optional"`
+}
+
+type SMBFileItem struct {
+	Name    string `json:"name"`
+	Size    int64  `json:"size"`
+	IsDir   bool   `json:"isDir"`
+	ModTime string `json:"modTime"`
+}
+
+type SMBBrowseResp struct {
+	Files      []SMBFileItem `json:"files"`
+	CurrentPath string       `json:"currentPath"`
+}
+
+type SMBDownloadReq struct {
+	RemotePath string `json:"remotePath"`
+	LocalPath  string `json:"localPath,optional"`
+}
+
+type SMBDownloadResp struct {
+	Success  bool   `json:"success"`
+	Message  string `json:"message"`
+	FilePath string `json:"filePath"`
 }
 
 type GetServerLogsReq struct {

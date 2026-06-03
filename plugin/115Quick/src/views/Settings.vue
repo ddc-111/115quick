@@ -64,9 +64,6 @@
           <el-form-item label="密码">
             <el-input v-model="smbForm.password" type="password" show-password placeholder="留空表示无密码" />
           </el-form-item>
-          <el-form-item label="挂载点">
-            <el-input v-model="smbForm.mountPoint" placeholder="Linux/Mac: /mnt/smb, Windows: Z:" />
-          </el-form-item>
         </template>
 
         <el-form-item>
@@ -79,11 +76,58 @@
         </el-form-item>
 
         <el-form-item v-if="smbStatus">
-          <el-tag :type="smbStatus.isMounted ? 'success' : 'info'" size="large">
-            {{ smbStatus.isMounted ? '已挂载' : smbStatus.enabled ? '已启用未挂载' : '未启用' }}
+          <el-tag :type="smbStatus.isConnected ? 'success' : 'info'" size="large">
+            {{ smbStatus.isConnected ? '已连接' : smbStatus.enabled ? '已启用未连接' : '未启用' }}
           </el-tag>
         </el-form-item>
       </el-form>
+    </div>
+
+    <!-- SMB 文件浏览器 -->
+    <div class="card" v-if="smbStatus?.isConnected">
+      <h3 style="margin-bottom: 16px">SMB 文件浏览器</h3>
+      <div class="smb-browser">
+        <!-- 当前路径 -->
+        <div class="smb-path">
+          <el-breadcrumb separator="/">
+            <el-breadcrumb-item @click="smbNavigateTo('')">根目录</el-breadcrumb-item>
+            <el-breadcrumb-item v-for="(part, index) in smbPathParts" :key="index" 
+              @click="smbNavigateToPart(index)">
+              {{ part }}
+            </el-breadcrumb-item>
+          </el-breadcrumb>
+        </div>
+
+        <!-- 文件列表 -->
+        <el-table :data="smbFiles" style="width: 100%" v-loading="smbLoading" max-height="400">
+          <el-table-column label="文件名" min-width="300">
+            <template #default="{ row }">
+              <div class="file-name" @click="row.isDir ? smbNavigateTo(row.name) : null">
+                <el-icon v-if="row.isDir" color="#409eff"><Folder /></el-icon>
+                <el-icon v-else color="#909399"><Document /></el-icon>
+                <span :class="{ 'is-dir': row.isDir }">{{ row.name }}</span>
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column label="大小" width="120">
+            <template #default="{ row }">
+              {{ row.isDir ? '-' : formatFileSize(row.size) }}
+            </template>
+          </el-table-column>
+          <el-table-column label="修改时间" width="180">
+            <template #default="{ row }">
+              {{ row.modTime }}
+            </template>
+          </el-table-column>
+          <el-table-column label="操作" width="120">
+            <template #default="{ row }">
+              <el-button v-if="!row.isDir" size="small" type="primary" @click="handleSMBDownload(row)">
+                下载
+              </el-button>
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
     </div>
 
     <!-- 重命名工具 -->
@@ -131,10 +175,20 @@
 </template>
 
 <script setup lang="ts">
-import { ref, onMounted } from 'vue'
+import { ref, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import { Folder, Document } from '@element-plus/icons-vue'
 import { useServerStore } from '@/stores/server'
-import { setDownloadMode, startRename, getSMBConfig, setSMBConfig, testSMBConnection, getServerInfo } from '@/api/server'
+import { 
+  setDownloadMode, 
+  startRename, 
+  getSMBConfig, 
+  setSMBConfig, 
+  testSMBConnection, 
+  getServerInfo,
+  smbBrowse,
+  smbDownload
+} from '@/api/server'
 
 const serverStore = useServerStore()
 const downloadMode = ref(0)
@@ -152,17 +206,26 @@ const smbForm = ref({
   host: '',
   share: '',
   username: '',
-  password: '',
-  mountPoint: ''
+  password: ''
 })
 
 const smbStatus = ref<{
   enabled: boolean
-  isMounted: boolean
+  isConnected: boolean
 } | null>(null)
 
 const savingSMB = ref(false)
 const testingSMB = ref(false)
+
+// SMB 文件浏览器
+const smbLoading = ref(false)
+const smbFiles = ref<any[]>([])
+const smbCurrentPath = ref('')
+
+const smbPathParts = computed(() => {
+  if (!smbCurrentPath.value || smbCurrentPath.value === '.') return []
+  return smbCurrentPath.value.split('/').filter(p => p)
+})
 
 const serverVersion = ref<{
   version: string
@@ -194,12 +257,16 @@ onMounted(async () => {
         host: (smbData as any).host || '',
         share: (smbData as any).share || '',
         username: (smbData as any).username || '',
-        password: (smbData as any).password || '',
-        mountPoint: (smbData as any).mountPoint || ''
+        password: (smbData as any).password || ''
       }
       smbStatus.value = {
         enabled: (smbData as any).enabled || false,
-        isMounted: (smbData as any).isMounted || false
+        isConnected: (smbData as any).isConnected || false
+      }
+
+      // 如果已连接，加载文件列表
+      if ((smbData as any).isConnected) {
+        loadSMBFiles()
       }
     }
 
@@ -229,7 +296,11 @@ async function handleSaveSMB() {
     const data = await getSMBConfig() as any
     smbStatus.value = {
       enabled: data.enabled,
-      isMounted: data.isMounted
+      isConnected: data.isConnected
+    }
+    // 如果连接成功，加载文件列表
+    if (data.isConnected) {
+      loadSMBFiles()
     }
   } catch (error: any) {
     ElMessage.error(error.message || '保存失败')
@@ -253,6 +324,56 @@ async function handleTestSMB() {
   } finally {
     testingSMB.value = false
   }
+}
+
+async function loadSMBFiles() {
+  smbLoading.value = true
+  try {
+    const data = await smbBrowse(smbCurrentPath.value) as any
+    smbFiles.value = data.files || []
+  } catch (error: any) {
+    ElMessage.error(error.message || '加载SMB文件失败')
+  } finally {
+    smbLoading.value = false
+  }
+}
+
+function smbNavigateTo(path: string) {
+  smbCurrentPath.value = path
+  loadSMBFiles()
+}
+
+function smbNavigateToPart(index: number) {
+  const parts = smbPathParts.value.slice(0, index + 1)
+  smbCurrentPath.value = parts.join('/')
+  loadSMBFiles()
+}
+
+async function handleSMBDownload(file: any) {
+  const remotePath = smbCurrentPath.value 
+    ? `${smbCurrentPath.value}/${file.name}` 
+    : file.name
+  
+  try {
+    await ElMessageBox.confirm(`确定要下载 "${file.name}" 吗？`, '确认下载', {
+      type: 'info'
+    })
+    
+    const data = await smbDownload(remotePath) as any
+    ElMessage.success(`文件已下载到: ${data.filePath}`)
+  } catch (error: any) {
+    if (error !== 'cancel') {
+      ElMessage.error(error.message || '下载失败')
+    }
+  }
+}
+
+function formatFileSize(bytes: number): string {
+  if (bytes === 0) return '0 B'
+  const k = 1024
+  const sizes = ['B', 'KB', 'MB', 'GB', 'TB']
+  const i = Math.floor(Math.log(bytes) / Math.log(k))
+  return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i]
 }
 
 async function handleRename() {
@@ -279,3 +400,26 @@ async function handleDisconnect() {
   }
 }
 </script>
+
+<style lang="scss" scoped>
+.smb-browser {
+  .smb-path {
+    margin-bottom: 16px;
+    padding: 8px;
+    background: #f5f7fa;
+    border-radius: 4px;
+  }
+}
+
+.file-name {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+
+  .is-dir {
+    color: #409eff;
+    font-weight: bold;
+  }
+}
+</style>

@@ -155,11 +155,13 @@ type GetFolderFilesResp struct {
 		ISM   string `json:"ism"`   // 是否星标，1：星标
 		ISP   int    `json:"isp"`   // 是否加密；1：加密
 		PC    string `json:"pc"`    // 文件提取码
+		FS    int64  `json:"fs"`    // 文件大小
 		UPT   int    `json:"upt"`   // 修改时间
 		UET   int    `json:"uet"`   // 修改时间
 		UPPT  int    `json:"uppt"`  // 上传时间
 		CM    int    `json:"cm"`    // 未知字段
 		FDESC string `json:"fdesc"` // 文件备注
 		ISPL  int    `json:"ispl"`  // 是否统计文件夹下视频时长开关
+		ICO   string `json:"ico"`   // 文件后缀名
 	} `json:"data"` // 数据
 }

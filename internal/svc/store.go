@@ -212,15 +212,25 @@ func (s *Store) ClearTaskHistory() error {
 	return err
 }
 
+func (s *Store) ClearCompletedTasks() error {
+	_, err := s.db.Exec("DELETE FROM file_infos WHERE url NOT IN (SELECT url FROM task_history WHERE status IN (0, 1))")
+	return err
+}
+
+// 清空已完成的任务历史
+func (s *Store) ClearCompletedTaskHistory() error {
+	_, err := s.db.Exec("DELETE FROM task_history WHERE status IN (2, 3)")
+	return err
+}
+
 // SMB 配置相关方法
 
 type SMBConfigData struct {
-	Enabled    bool
-	Host       string
-	Share      string
-	Username   string
-	Password   string
-	MountPoint string
+	Enabled  bool
+	Host     string
+	Share    string
+	Username string
+	Password string
 }
 
 func (s *Store) SaveSMBConfig(cfg SMBConfigData) error {
@@ -228,16 +238,16 @@ func (s *Store) SaveSMBConfig(cfg SMBConfigData) error {
 	if cfg.Enabled {
 		enabled = 1
 	}
-	_, err := s.db.Exec(`INSERT OR REPLACE INTO smb_config (id, enabled, host, share, username, password, mount_point, updated_at) 
-		VALUES (1, ?, ?, ?, ?, ?, ?, ?)`, enabled, cfg.Host, cfg.Share, cfg.Username, cfg.Password, cfg.MountPoint, time.Now())
+	_, err := s.db.Exec(`INSERT OR REPLACE INTO smb_config (id, enabled, host, share, username, password, updated_at) 
+		VALUES (1, ?, ?, ?, ?, ?, ?)`, enabled, cfg.Host, cfg.Share, cfg.Username, cfg.Password, time.Now())
 	return err
 }
 
 func (s *Store) GetSMBConfig() (*SMBConfigData, error) {
-	row := s.db.QueryRow("SELECT enabled, host, share, username, password, mount_point FROM smb_config WHERE id = 1")
+	row := s.db.QueryRow("SELECT enabled, host, share, username, password FROM smb_config WHERE id = 1")
 	var cfg SMBConfigData
 	var enabled int
-	err := row.Scan(&enabled, &cfg.Host, &cfg.Share, &cfg.Username, &cfg.Password, &cfg.MountPoint)
+	err := row.Scan(&enabled, &cfg.Host, &cfg.Share, &cfg.Username, &cfg.Password)
 	if err == sql.ErrNoRows {
 		return &SMBConfigData{}, nil
 	}

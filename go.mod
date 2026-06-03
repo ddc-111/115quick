@@ -4,6 +4,7 @@ go 1.25.0
 
 require (
 	github.com/golang-jwt/jwt/v4 v4.5.2
+	github.com/hirochachacha/go-smb2 v1.1.0
 	github.com/satori/go.uuid v1.2.0
 	github.com/zeromicro/go-zero v1.8.2
 	modernc.org/sqlite v1.51.0

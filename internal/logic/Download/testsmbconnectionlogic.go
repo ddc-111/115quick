@@ -30,7 +30,7 @@ func (l *TestSMBConnectionLogic) TestSMBConnection(req *types.TestSMBConnectionR
 		return nil, fmt.Errorf("SMB host and share are required")
 	}
 
- smbCfg := &smb.SMBConfig{
+	smbCfg := &smb.SMBConfig{
 		Host:     req.Host,
 		Share:    req.Share,
 		Username: req.Username,
