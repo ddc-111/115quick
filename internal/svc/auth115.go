@@ -113,6 +113,16 @@ func NewAuth115Manager(svcCtx *ServiceContext) *Auth115Manager {
 		}
 		m.lastRefreshAt = time.Now()
 		request115.SetAccessToken(accessToken)
+
+		// 启动时立即刷新 token，确保 token 有效
+		go func() {
+			time.Sleep(2 * time.Second) // 等待服务完全启动
+			if _, err := m.RefreshToken(); err != nil {
+				logx.Errorf("启动时刷新token失败: %v", err)
+			} else {
+				logx.Info("启动时token刷新成功")
+			}
+		}()
 	}
 
 	m.downloadPath = svcCtx.Config.Auth115.DownloadPath
@@ -767,35 +777,52 @@ func (m *Auth115Manager) GetFolderFiles(folderID string, fileType int) (*types.G
 	params.Set("show_dir", "1")
 
 	apiURL := "https://proapi.115.com/open/ufile/files?" + params.Encode()
-	request, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %v", err)
+	
+	// 尝试请求，如果失败则刷新 token 重试
+	for retry := 0; retry < 2; retry++ {
+		request, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("创建请求失败: %v", err)
+		}
+
+		request.Header.Set("Authorization", "Bearer "+accessToken)
+
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			return nil, fmt.Errorf("发送请求失败: %v", err)
+		}
+		defer response.Body.Close()
+
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("读取响应失败: %v", err)
+		}
+
+		var result types.GetFolderFilesResp
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("解析响应失败: %v", err)
+		}
+
+		// 如果成功，返回结果
+		if result.State {
+			return &result, nil
+		}
+
+		// 如果是 token 错误且是第一次尝试，刷新 token 重试
+		if retry == 0 && (result.Code == 401 || result.Code == 40002 || strings.Contains(result.Message, "token") || strings.Contains(result.Message, "Token")) {
+			logx.Info("Token 可能已过期，尝试刷新...")
+			accessToken, err = m.RefreshToken()
+			if err != nil {
+				return nil, fmt.Errorf("刷新token失败: %v", err)
+			}
+			continue
+		}
+
+		return nil, fmt.Errorf("获取文件夹内文件列表失败: %s (code: %d)", result.Message, result.Code)
 	}
 
-	request.Header.Set("Authorization", "Bearer "+accessToken)
-
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("发送请求失败: %v", err)
-	}
-	defer response.Body.Close()
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %v", err)
-	}
-
-	var result types.GetFolderFilesResp
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %v", err)
-	}
-
-	if !result.State {
-		return nil, fmt.Errorf("获取文件夹内文件列表失败: %s", result.Message)
-	}
-
-	return &result, nil
+	return nil, fmt.Errorf("获取文件夹内文件列表失败")
 }
 
 func (m *Auth115Manager) GetFileInfos() []FileInfo {
