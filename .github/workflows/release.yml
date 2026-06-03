@@ -90,6 +90,12 @@ jobs:
         working-directory: plugin/115Quick
         run: npm run build
 
+      - name: Copy manifest and icons
+        working-directory: plugin/115Quick
+        run: |
+          cp manifest.json dist/
+          cp -r public/icons dist/
+
       - name: Create plugin archive
         run: |
           cd plugin/115Quick/dist
