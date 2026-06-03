@@ -4,12 +4,13 @@ import (
 	"net/http"
 
 	"115Quick_server/internal/logic/Download"
+	"115Quick_server/internal/respType"
 	"115Quick_server/internal/svc"
 	"115Quick_server/internal/types"
+
 	"github.com/zeromicro/go-zero/rest/httpx"
 )
 
-// 获取任务历史
 func GetTaskHistoryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		var req types.TaskHistoryReq
@@ -23,7 +24,10 @@ func GetTaskHistoryHandler(svcCtx *svc.ServiceContext) http.HandlerFunc {
 		if err != nil {
 			httpx.ErrorCtx(r.Context(), w, err)
 		} else {
-			httpx.OkJsonCtx(r.Context(), w, resp)
+			httpx.OkJsonCtx(r.Context(), w, respType.SuccessResp{
+				Code: http.StatusOK,
+				Data: resp,
+			})
 		}
 	}
 }
