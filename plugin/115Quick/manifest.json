@@ -5,7 +5,8 @@
   "description": "115网盘离线下载管理工具",
   "permissions": ["storage", "activeTab"],
   "action": {
-    "default_title": "打开115Quick管理面板"
+    "default_title": "打开115Quick管理面板",
+    "default_popup": "index.html"
   },
   "background": {
     "service_worker": "background.js"
