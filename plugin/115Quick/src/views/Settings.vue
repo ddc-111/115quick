@@ -183,8 +183,8 @@ const serverVersion = ref<{
 onMounted(async () => {
   try {
     const [smbData, serverData] = await Promise.all([
-      getSMBConfig(),
-      getServerInfo()
+      getSMBConfig() as any,
+      getServerInfo() as any
     ])
 
     // SMB配置
@@ -224,7 +224,7 @@ async function handleSaveSMB() {
   try {
     await setSMBConfig(smbForm.value)
     ElMessage.success('SMB 配置已保存')
-    const { data } = await getSMBConfig()
+    const data = await getSMBConfig() as any
     smbStatus.value = {
       enabled: data.enabled,
       isMounted: data.isMounted
