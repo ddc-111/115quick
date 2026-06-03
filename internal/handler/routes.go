@@ -105,6 +105,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/api/testSMBConnection",
 				Handler: Download.TestSMBConnectionHandler(serverCtx),
 			},
+			{
+				// 获取服务器日志
+				Method:  http.MethodGet,
+				Path:    "/api/getServerLogs",
+				Handler: Download.GetServerLogsHandler(serverCtx),
+			},
 		},
 		rest.WithPrefix("/v1/Download"),
 	)

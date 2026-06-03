@@ -169,3 +169,12 @@ type TestSMBConnectionReq struct {
 	Username string `json:"username,optional"`
 	Password string `json:"password,optional"`
 }
+
+type GetServerLogsReq struct {
+	Type  string `json:"type,optional"`
+	Lines int    `json:"lines,optional,default=200"`
+}
+
+type GetServerLogsResp struct {
+	Logs []string `json:"logs"`
+}

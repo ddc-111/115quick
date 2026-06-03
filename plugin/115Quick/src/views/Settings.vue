@@ -183,27 +183,29 @@ const serverVersion = ref<{
 onMounted(async () => {
   try {
     const [smbData, serverData] = await Promise.all([
-      getSMBConfig() as any,
-      getServerInfo() as any
+      getSMBConfig().catch(() => null),
+      getServerInfo().catch(() => null)
     ])
 
     // SMB配置
-    smbForm.value = {
-      enabled: smbData.enabled,
-      host: smbData.host,
-      share: smbData.share,
-      username: smbData.username,
-      password: smbData.password,
-      mountPoint: smbData.mountPoint
-    }
-    smbStatus.value = {
-      enabled: smbData.enabled,
-      isMounted: smbData.isMounted
+    if (smbData) {
+      smbForm.value = {
+        enabled: (smbData as any).enabled || false,
+        host: (smbData as any).host || '',
+        share: (smbData as any).share || '',
+        username: (smbData as any).username || '',
+        password: (smbData as any).password || '',
+        mountPoint: (smbData as any).mountPoint || ''
+      }
+      smbStatus.value = {
+        enabled: (smbData as any).enabled || false,
+        isMounted: (smbData as any).isMounted || false
+      }
     }
 
     // 服务器版本信息
-    if (serverData.version) {
-      serverVersion.value = serverData.version
+    if (serverData && (serverData as any).version) {
+      serverVersion.value = (serverData as any).version
     }
   } catch (error) {
     console.error('Failed to load config:', error)
