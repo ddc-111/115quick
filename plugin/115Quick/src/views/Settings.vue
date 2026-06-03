@@ -14,6 +14,23 @@
         <el-descriptions-item label="连接状态">
           <el-tag type="success">已连接</el-tag>
         </el-descriptions-item>
+        <el-descriptions-item label="服务器版本">
+          <span>{{ serverVersion.version || '获取中...' }}</span>
+          <el-tag v-if="serverVersion.hasUpdate" type="warning" size="small" style="margin-left: 8px">
+            有新版本 {{ serverVersion.latestVersion }}
+          </el-tag>
+        </el-descriptions-item>
+        <el-descriptions-item v-if="serverVersion.gitCommit" label="Git Commit">
+          {{ serverVersion.gitCommit }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="serverVersion.buildTime" label="构建时间">
+          {{ serverVersion.buildTime }}
+        </el-descriptions-item>
+        <el-descriptions-item v-if="serverVersion.hasUpdate" label="更新链接">
+          <el-link type="primary" :href="serverVersion.updateUrl" target="_blank">
+            前往下载新版本
+          </el-link>
+        </el-descriptions-item>
       </el-descriptions>
     </div>
 
@@ -117,7 +134,7 @@
 import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useServerStore } from '@/stores/server'
-import { setDownloadMode, startRename, getSMBConfig, setSMBConfig, testSMBConnection } from '@/api/server'
+import { setDownloadMode, startRename, getSMBConfig, setSMBConfig, testSMBConnection, getServerInfo } from '@/api/server'
 
 const serverStore = useServerStore()
 const downloadMode = ref(0)
@@ -147,23 +164,49 @@ const smbStatus = ref<{
 const savingSMB = ref(false)
 const testingSMB = ref(false)
 
+const serverVersion = ref<{
+  version: string
+  gitCommit: string
+  buildTime: string
+  latestVersion: string
+  updateUrl: string
+  hasUpdate: boolean
+}>({
+  version: '',
+  gitCommit: '',
+  buildTime: '',
+  latestVersion: '',
+  updateUrl: '',
+  hasUpdate: false
+})
+
 onMounted(async () => {
   try {
-    const { data } = await getSMBConfig()
+    const [smbData, serverData] = await Promise.all([
+      getSMBConfig(),
+      getServerInfo()
+    ])
+
+    // SMB配置
     smbForm.value = {
-      enabled: data.enabled,
-      host: data.host,
-      share: data.share,
-      username: data.username,
-      password: data.password,
-      mountPoint: data.mountPoint
+      enabled: smbData.enabled,
+      host: smbData.host,
+      share: smbData.share,
+      username: smbData.username,
+      password: smbData.password,
+      mountPoint: smbData.mountPoint
     }
     smbStatus.value = {
-      enabled: data.enabled,
-      isMounted: data.isMounted
+      enabled: smbData.enabled,
+      isMounted: smbData.isMounted
+    }
+
+    // 服务器版本信息
+    if (serverData.version) {
+      serverVersion.value = serverData.version
     }
   } catch (error) {
-    console.error('Failed to load SMB config:', error)
+    console.error('Failed to load config:', error)
   }
 })
 

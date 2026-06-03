@@ -4,19 +4,29 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"os"
 
 	"115Quick_server/internal/config"
 	"115Quick_server/internal/handler"
 	"115Quick_server/internal/svc"
+	"115Quick_server/internal/version"
 
 	"github.com/zeromicro/go-zero/core/conf"
 	"github.com/zeromicro/go-zero/rest"
 )
 
-var configFile = flag.String("f", "etc/quick.yaml", "the config file")
+var (
+	configFile = flag.String("f", "etc/quick.yaml", "the config file")
+	showVer    = flag.Bool("version", false, "show version")
+)
 
 func main() {
 	flag.Parse()
+
+	if *showVer {
+		fmt.Printf("115Quick v%s (commit: %s, built: %s)\n", version.Version, version.GitCommit, version.BuildTime)
+		os.Exit(0)
+	}
 
 	var c config.Config
 	conf.MustLoad(*configFile, &c)

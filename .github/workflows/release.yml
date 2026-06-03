@@ -47,7 +47,14 @@ jobs:
           CGO_ENABLED: 0
         run: |
           BINARY_NAME="115quick${{ matrix.suffix }}"
-          go build -ldflags="-s -w" -o "dist/${BINARY_NAME}" .
+          VERSION="${GITHUB_REF#refs/tags/v}"
+          COMMIT="$(git rev-parse --short HEAD)"
+          BUILD_TIME="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+          go build -ldflags="-s -w \
+            -X '115Quick_server/internal/version.Version=${VERSION}' \
+            -X '115Quick_server/internal/version.GitCommit=${COMMIT}' \
+            -X '115Quick_server/internal/version.BuildTime=${BUILD_TIME}'" \
+            -o "dist/${BINARY_NAME}" .
 
       - name: Create archive
         run: |

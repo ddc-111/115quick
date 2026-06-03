@@ -74,10 +74,20 @@ type RemoveDownloadTaskReq struct {
 type ServerInfoReq struct {
 }
 
+type VersionInfo struct {
+	Version       string `json:"version"`
+	GitCommit     string `json:"gitCommit"`
+	BuildTime     string `json:"buildTime"`
+	LatestVersion string `json:"latestVersion"`
+	UpdateURL     string `json:"updateUrl"`
+	HasUpdate     bool   `json:"hasUpdate"`
+}
+
 type ServerInfoResp struct {
 	DownFileInfoList []DownFileInfo `json:"downFileInfoList"`
 	AuthData         AuthData       `json:"authData"`
 	Mode             int64          `json:"mode"` //默认只下载视频 mode为1是下载全部
+	Version          VersionInfo    `json:"version"`
 }
 
 type SetDownloadModeReq struct {

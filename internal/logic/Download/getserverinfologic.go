@@ -7,6 +7,7 @@ import (
 
 	"115Quick_server/internal/svc"
 	"115Quick_server/internal/types"
+	"115Quick_server/internal/version"
 
 	"github.com/zeromicro/go-zero/core/logx"
 )
@@ -51,5 +52,16 @@ func (l *GetServerInfoLogic) GetServerInfo(req *types.ServerInfoReq) (resp *type
 		ExpireAt:   "",
 	}
 	resp.Mode = l.svcCtx.Mode
+
+	versionInfo := version.GetVersionInfo()
+	resp.Version = types.VersionInfo{
+		Version:       versionInfo.Version,
+		GitCommit:     versionInfo.GitCommit,
+		BuildTime:     versionInfo.BuildTime,
+		LatestVersion: versionInfo.LatestVersion,
+		UpdateURL:     versionInfo.UpdateURL,
+		HasUpdate:     versionInfo.HasUpdate,
+	}
+
 	return
 }

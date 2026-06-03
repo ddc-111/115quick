@@ -11,10 +11,19 @@ type (
 		AuthStatus string `json:"authStatus"` //认证状态
 		ExpireAt   string `json:"expireAt"` //过期时间
 	}
+	VersionInfo {
+		Version       string `json:"version"`
+		GitCommit     string `json:"gitCommit"`
+		BuildTime     string `json:"buildTime"`
+		LatestVersion string `json:"latestVersion"`
+		UpdateURL     string `json:"updateUrl"`
+		HasUpdate     bool   `json:"hasUpdate"`
+	}
 	ServerInfoResp {
 		DownFileInfoList []DownFileInfo `json:"downFileInfoList"`
 		AuthData         AuthData       `json:"authData"`
 		Mode             int64          `json:"mode"` //默认只下载视频 mode为1是下载全部
+		Version          VersionInfo    `json:"version"`
 	}
 	AddAuthPwReq {
 		AuthPw string `json:"authPw"`

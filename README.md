@@ -19,9 +19,84 @@
 
 ## 安装使用
 
-### 从 Release 下载
+### macOS 安装（推荐）
 
-1. 从 [Release](https://github.com/ddc-111/115quick/releases) 页面下载对应平台的二进制文件
+macOS 用户可以使用一键安装脚本，支持自动更新和开机自启服务。
+
+#### 快速安装
+
+```bash
+# 下载并运行安装脚本
+curl -fsSL https://raw.githubusercontent.com/ddc-111/115quick/main/scripts/install-macos.sh | bash
+```
+
+或者手动下载脚本后运行：
+
+```bash
+# 下载脚本
+curl -fsSL -o install-macos.sh https://raw.githubusercontent.com/ddc-111/115quick/main/scripts/install-macos.sh
+
+# 添加执行权限
+chmod +x install-macos.sh
+
+# 运行安装
+./install-macos.sh install
+```
+
+安装过程会自动：
+- 检测系统架构（Intel / Apple Silicon）
+- 下载对应版本的二进制文件
+- 安装到 `/usr/local/bin`
+- 创建配置目录 `~/.config/115quick`
+- 询问是否创建 macOS 服务（开机自启）
+
+#### 服务管理
+
+```bash
+# 启动服务
+./install-macos.sh start
+
+# 停止服务
+./install-macos.sh stop
+
+# 重启服务
+./install-macos.sh restart
+
+# 查看状态
+./install-macos.sh status
+```
+
+#### 检查更新
+
+```bash
+./install-macos.sh update
+```
+
+脚本会自动检测新版本，询问是否更新。
+
+#### 卸载
+
+```bash
+./install-macos.sh uninstall
+```
+
+#### 手动启动（不使用服务）
+
+```bash
+# 直接运行
+115quick -f ~/.config/115quick/quick.yaml
+```
+
+### 其他平台安装
+
+#### 从 Release 下载
+
+1. 从 [Release](https://github.com/ddc-111/115quick/releases) 页面下载对应平台的压缩包：
+   - `115quick-darwin-amd64.tar.gz` - macOS Intel
+   - `115quick-darwin-arm64.tar.gz` - macOS Apple Silicon (M1/M2/M3)
+   - `115quick-linux-amd64.tar.gz` - Linux x86_64
+   - `115quick-linux-arm64.tar.gz` - Linux ARM64
+   - `115quick-windows-amd64.tar.gz` - Windows
 2. 解压后修改 `etc/quick.yaml` 配置文件
 
 ### 配置
