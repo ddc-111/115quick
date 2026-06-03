@@ -137,39 +137,6 @@ func (m *SMBManager) GetConfig() *SMBConfig {
 	return m.config
 }
 
-func (m *SMBManager) TestConnection(cfg *SMBConfig) error {
-	if cfg.Host == "" || cfg.Share == "" {
-		return fmt.Errorf("SMB host and share are required")
-	}
-
-	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
-	if err != nil {
-		return fmt.Errorf("connection failed: %v", err)
-	}
-	defer conn.Close()
-
-	d := &smb2.Dialer{
-		Initiator: &smb2.NTLMInitiator{
-			User:     cfg.Username,
-			Password: cfg.Password,
-		},
-	}
-
-	session, err := d.Dial(conn)
-	if err != nil {
-		return fmt.Errorf("SMB session failed: %v", err)
-	}
-	defer session.Logoff()
-
-	share, err := session.Mount(cfg.Share)
-	if err != nil {
-		return fmt.Errorf("mount share failed: %v", err)
-	}
-	defer share.Umount()
-
-	return nil
-}
-
 func (m *SMBManager) ListFiles(path string) ([]SMBFile, error) {
 	if !m.connected || m.share == nil {
 		return nil, fmt.Errorf("not connected to SMB server")
