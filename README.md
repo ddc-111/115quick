@@ -21,70 +21,37 @@
 
 ### macOS 安装（推荐）
 
-macOS 用户可以使用一键安装脚本，支持自动更新和开机自启服务。
+macOS 用户可以使用一键安装脚本，自动完成安装并配置为系统服务（开机自启）。
 
-#### 快速安装
+#### 一键安装
 
 ```bash
-# 下载并运行安装脚本
 curl -fsSL https://raw.githubusercontent.com/ddc-111/115quick/main/scripts/install-macos.sh | bash
 ```
 
-或者手动下载脚本后运行：
-
-```bash
-# 下载脚本
-curl -fsSL -o install-macos.sh https://raw.githubusercontent.com/ddc-111/115quick/main/scripts/install-macos.sh
-
-# 添加执行权限
-chmod +x install-macos.sh
-
-# 运行安装
-./install-macos.sh install
-```
-
-安装过程会自动：
-- 检测系统架构（Intel / Apple Silicon）
-- 下载对应版本的二进制文件
-- 安装到 `/usr/local/bin`
-- 创建配置目录 `~/.config/115quick`
-- 询问是否创建 macOS 服务（开机自启）
-
-#### 服务管理
-
-```bash
-# 启动服务
-./install-macos.sh start
-
-# 停止服务
-./install-macos.sh stop
-
-# 重启服务
-./install-macos.sh restart
-
-# 查看状态
-./install-macos.sh status
-```
+安装完成后：
+- 服务自动启动，开机自启
+- 配置文件：`~/.config/115quick/quick.yaml`
+- 数据目录：`~/.local/share/115quick`
+- 访问地址：`http://localhost:8889`
 
 #### 检查更新
 
 ```bash
-./install-macos.sh update
+curl -fsSL https://raw.githubusercontent.com/ddc-111/115quick/main/scripts/check-update.sh | bash
 ```
 
-脚本会自动检测新版本，询问是否更新。
-
-#### 卸载
+#### 管理服务
 
 ```bash
-./install-macos.sh uninstall
-```
+# 停止服务
+launchctl stop com.115quick.server
 
-#### 手动启动（不使用服务）
+# 启动服务
+launchctl start com.115quick.server
 
-```bash
-# 直接运行
-115quick -f ~/.config/115quick/quick.yaml
+# 重启服务
+launchctl restart com.115quick.server
 ```
 
 ### 其他平台安装
