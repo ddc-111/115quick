@@ -77,3 +77,29 @@ GitHub Actions workflow (`.github/workflows/release.yml`):
 - Builds server binaries for: windows/amd64, linux/amd64, linux/arm64, darwin/amd64, darwin/arm64
 - Builds Chrome extension from `plugin/115Quick`
 - Creates GitHub Release with all artifacts
+
+## Version Management
+
+**Version Strategy**: Starting from v0.5.0, subsequent patches increment as v0.5.1, v0.5.2, etc.
+
+**Version History**:
+- v0.1.0 - Initial release
+- v0.2.0 - (deprecated, use v0.5.0)
+- v0.5.0 - Version detection, macOS install script, server info display
+
+**How to Release**:
+```bash
+# 1. Commit changes
+git add -A && git commit -m "feat: description"
+
+# 2. Create tag
+git tag -a v0.5.X -m "v0.5.X: brief description"
+
+# 3. Push
+git push origin main && git push origin v0.5.X
+```
+
+**Version Injection**: Build time version is injected via `-ldflags`:
+```bash
+go build -ldflags="-X '115Quick_server/internal/version.Version=x.x.x'" .
+```
