@@ -86,6 +86,8 @@ GitHub Actions workflow (`.github/workflows/release.yml`):
 - v0.1.0 - Initial release
 - v0.2.0 - (deprecated, use v0.5.0)
 - v0.5.0 - Version detection, macOS install script, server info display
+- v0.5.1 - Simplify macOS install, add update checker
+- v0.5.2 - Fix Chrome plugin popup
 
 **How to Release**:
 ```bash
@@ -97,7 +99,22 @@ git tag -a v0.5.X -m "v0.5.X: brief description"
 
 # 3. Push
 git push origin main && git push origin v0.5.X
+
+# 4. Verify CI (wait for all jobs to pass)
+gh run list --limit 1
+gh run watch <run-id> --exit-status
+
+# 5. Check release
+gh release view v0.5.X
 ```
+
+**Release Checklist**:
+1. Code changes committed
+2. Tag created and pushed
+3. GitHub Actions CI passes (all green)
+4. Release created with all artifacts
+5. Chrome plugin zip included
+6. Server binaries for all platforms included
 
 **Version Injection**: Build time version is injected via `-ldflags`:
 ```bash
