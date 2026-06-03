@@ -39,7 +39,7 @@ func (l *RenameFileLogic) RenameFile(req *types.RenameFileReq) (resp *types.NilR
 	data.Set("file_id", req.FileID)
 	data.Set("file_name", req.NewName)
 
-	apiURL := "https://proapi.115.com/open/ufile/rename"
+	apiURL := "https://proapi.115.com/open/ufile/update"
 	request, err := http.NewRequest("POST", apiURL, strings.NewReader(data.Encode()))
 	if err != nil {
 		return nil, fmt.Errorf("创建请求失败: %v", err)

@@ -164,4 +164,8 @@ type GetFolderFilesResp struct {
 		ISPL  int    `json:"ispl"`  // 是否统计文件夹下视频时长开关
 		ICO   string `json:"ico"`   // 文件后缀名
 	} `json:"data"` // 数据
+	Count  int `json:"count"`  // 当前目录文件数量
+	CID    int `json:"cid"`    // 父目录id
+	Offset int `json:"offset"` // 偏移量
+	Limit  int `json:"limit"`  // 分页量
 }

@@ -40,7 +40,7 @@ func NewSMBManager() *SMBManager {
 
 func (m *SMBManager) Connect(cfg *SMBConfig) error {
 	if cfg.Host == "" || cfg.Share == "" {
-		return fmt.Errorf("SMB host and share are required")
+		return fmt.Errorf("SMB服务器地址和共享名称不能为空")
 	}
 
 	// 断开现有连接
@@ -50,7 +50,7 @@ func (m *SMBManager) Connect(cfg *SMBConfig) error {
 
 	conn, err := net.DialTimeout("tcp", fmt.Sprintf("%s:445", cfg.Host), 10*time.Second)
 	if err != nil {
-		return fmt.Errorf("failed to connect to SMB server: %v", err)
+		return fmt.Errorf("无法连接到SMB服务器 %s:445，请检查：1.服务器IP是否正确 2.SMB服务是否开启 3.防火墙是否允许445端口 (错误: %v)", cfg.Host, err)
 	}
 
 	d := &smb2.Dialer{
@@ -63,13 +63,13 @@ func (m *SMBManager) Connect(cfg *SMBConfig) error {
 	session, err := d.Dial(conn)
 	if err != nil {
 		conn.Close()
-		return fmt.Errorf("failed to establish SMB session: %v", err)
+		return fmt.Errorf("SMB会话建立失败，请检查用户名和密码是否正确 (错误: %v)", err)
 	}
 
 	share, err := session.Mount(cfg.Share)
 	if err != nil {
 		session.Logoff()
-		return fmt.Errorf("failed to mount SMB share: %v", err)
+		return fmt.Errorf("挂载SMB共享 '%s' 失败，请检查共享名称是否正确 (错误: %v)", cfg.Share, err)
 	}
 
 	m.config = cfg

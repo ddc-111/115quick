@@ -157,7 +157,7 @@ func (m *Auth115Manager) GetAccessToken() (string, error) {
 	}
 
 	expiresAt := m.lastRefreshAt.Add(time.Duration(m.authInfo.ExpiresIn) * time.Second)
-	if time.Now().Add(5 * time.Minute).Before(expiresAt) {
+	if time.Now().Add(10 * time.Minute).Before(expiresAt) {
 		token := m.authInfo.AccessToken
 		m.mu.RUnlock()
 		return token, nil
@@ -173,7 +173,7 @@ func (m *Auth115Manager) RefreshToken() (string, error) {
 
 	if m.authInfo != nil {
 		expiresAt := m.lastRefreshAt.Add(time.Duration(m.authInfo.ExpiresIn) * time.Second)
-		if time.Now().Add(5 * time.Minute).Before(expiresAt) {
+		if time.Now().Add(10 * time.Minute).Before(expiresAt) {
 			return m.authInfo.AccessToken, nil
 		}
 	}
@@ -971,8 +971,8 @@ func (m *Auth115Manager) GetTokenStatus() (configured bool, valid bool, expiresA
 		return configured, false, expiresAt, "Token已过期，请重新配置"
 	}
 
-	// 检查是否即将过期（5分钟内）
-	if time.Now().Add(5 * time.Minute).After(expiresAtTime) {
+	// 检查是否即将过期（10分钟内）
+	if time.Now().Add(10 * time.Minute).After(expiresAtTime) {
 		return configured, true, expiresAt, "Token即将过期，建议刷新"
 	}
 
