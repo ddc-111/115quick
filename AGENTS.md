@@ -157,6 +157,7 @@ GitHub Actions workflow (`.github/workflows/release.yml`):
 - v0.7.2 - Fix all API response format
 - v0.8.0 - Cloud file management, default download directory
 - v0.9.0 - SMB client library, cloud file browser fix, task filter & clear
+- v0.9.1 - Fix rename API, token refresh timing, SMB error messages
 
 **How to Release**:
 ```bash
