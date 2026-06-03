@@ -1023,3 +1023,14 @@ func (m *Auth115Manager) RemovePendingTask(url string) error {
 func (m *Auth115Manager) RefreshCloudTasks() {
 	m.DoOnceWithCooldownPoll()
 }
+
+// SetDownloadPath 设置下载路径
+func (m *Auth115Manager) SetDownloadPath(path string) {
+	m.downloadPath = path
+	logx.Infof("Download path updated to: %s", path)
+}
+
+// GetDownloadPath 获取当前下载路径
+func (m *Auth115Manager) GetDownloadPath() string {
+	return m.downloadPath
+}

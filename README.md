@@ -12,6 +12,7 @@
 - 🖥️ 支持 Windows、Linux、Mac 等多平台
 - 🔌 提供 Chrome 插件支持
 - 💾 SQLite 本地数据存储
+- 🗂️ 支持 SMB 网络存储（NAS、Windows 共享等）
 
 ## 安装使用
 
@@ -33,7 +34,59 @@ Auth115:
   DownloadPath: data
   AccessToken: "你的AccessToken"
   RefreshToken: "你的RefreshToken"
+SMB:
+  Enabled: false
+  Host: ""
+  Share: ""
+  Username: ""
+  Password: ""
+  MountPoint: ""
 ```
+
+### SMB 网络存储配置
+
+SMB 功能允许将下载文件直接保存到网络共享存储（如 NAS、Windows 共享文件夹等）。
+
+#### 通过 Chrome 插件配置（推荐）
+
+1. 打开 Chrome 插件，进入「设置」页面
+2. 找到「SMB 网络存储」配置区域
+3. 开启 SMB 开关
+4. 填写配置信息：
+   - **SMB 服务器地址**: NAS 或共享服务器的 IP 地址或主机名
+   - **共享名称**: 共享文件夹名称
+   - **用户名**: 访问共享的用户名（匿名访问可留空）
+   - **密码**: 访问密码（无密码可留空）
+   - **挂载点**: 
+     - Linux/Mac: 本地目录路径，如 `/mnt/smb` 或 `/Volumes/share`
+     - Windows: 盘符，如 `Z:` 或 `Y:`
+5. 点击「测试连接」验证配置是否正确
+6. 点击「保存配置」应用设置
+
+#### 通过配置文件配置
+
+```yaml
+SMB:
+  Enabled: true
+  Host: "192.168.1.100"
+  Share: "downloads"
+  Username: "user"
+  Password: "password"
+  MountPoint: "/mnt/smb"
+```
+
+#### 系统要求
+
+- **Linux**: 需要安装 `cifs-utils` 包 (`sudo apt install cifs-utils`)
+- **macOS**: 系统自带 SMB 支持
+- **Windows**: 系统自带 SMB 支持，使用盘符作为挂载点
+
+#### 注意事项
+
+1. 确保服务器有权限访问 SMB 共享
+2. 挂载点目录会自动创建
+3. 如果 SMB 连接失败，下载将使用默认的本地路径
+4. 配置保存在数据库中，重启服务后会自动尝试挂载
 
 ### 获取 Token
 
@@ -71,6 +124,16 @@ Auth115:
 | GET | `/api/getServerInfo` | 获取服务器状态 |
 | POST | `/api/setDownloadMode` | 设置下载模式 (0=仅视频, 1=全部) |
 | POST | `/api/StartReName` | 触发文件重命名 |
+| POST | `/api/setToken` | 设置 115 AccessToken 和 RefreshToken |
+| GET | `/api/getTokenStatus` | 获取 Token 状态 |
+| GET | `/api/getDownloadProgress` | 获取当前下载进度 |
+| GET | `/api/getCloudTasks` | 获取云下载任务列表 |
+| GET | `/api/getTaskHistory` | 获取任务历史（分页） |
+| POST | `/api/removeDownloadTask` | 删除待下载任务 |
+| POST | `/api/refreshTasks` | 手动刷新云任务列表 |
+| GET | `/api/getSMBConfig` | 获取 SMB 配置 |
+| POST | `/api/setSMBConfig` | 设置 SMB 配置 |
+| POST | `/api/testSMBConnection` | 测试 SMB 连接 |
 
 ### 示例
 
@@ -82,6 +145,16 @@ curl -X POST http://localhost:8889/v1/Download/api/addDownloadLink \
 
 # 获取服务器状态
 curl http://localhost:8889/v1/Download/api/getServerInfo
+
+# 配置 SMB
+curl -X POST http://localhost:8889/v1/Download/api/setSMBConfig \
+  -H "Content-Type: application/json" \
+  -d '{"enabled": true, "host": "192.168.1.100", "share": "downloads", "username": "user", "password": "pass", "mountPoint": "/mnt/smb"}'
+
+# 测试 SMB 连接
+curl -X POST http://localhost:8889/v1/Download/api/testSMBConnection \
+  -H "Content-Type: application/json" \
+  -d '{"host": "192.168.1.100", "share": "downloads", "username": "user", "password": "pass"}'
 ```
 
 ## 从源码构建
@@ -100,7 +173,7 @@ go build -o 115quick .
 ### 构建 Chrome 插件
 
 ```bash
-cd plugin/115Quick_vue/115Quick
+cd plugin/115Quick
 npm install
 npm run build
 # 构建产物在 dist 目录
@@ -121,9 +194,11 @@ npm run build
 │   │   ├── servicecontext.go   # 服务上下文
 │   │   ├── auth115.go          # 115 API 客户端
 │   │   └── store.go            # SQLite 存储
-│   └── types/                  # 类型定义
+│   ├── types/                  # 类型定义
+│   └── utils/
+│       └── smb/                # SMB 网络存储工具
 ├── plugin/
-│   └── 115Quick_vue/           # Chrome 插件源码
+│   └── 115Quick/               # Chrome 插件源码
 └── .github/
     └── workflows/
         └── release.yml         # GitHub Actions 发布流水线
@@ -134,6 +209,7 @@ npm run build
 1. 请确保服务器有足够的存储空间
 2. 请遵守 115 网盘的使用条款
 3. 所有数据存储在本地 SQLite 数据库中
+4. 使用 SMB 网络存储时，请确保网络连接稳定
 
 ## 许可证
 

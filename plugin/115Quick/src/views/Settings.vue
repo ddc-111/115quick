@@ -26,6 +26,49 @@
       </el-radio-group>
     </div>
 
+    <!-- SMB 网络存储配置 -->
+    <div class="card">
+      <h3 style="margin-bottom: 16px">SMB 网络存储</h3>
+      <el-form :model="smbForm" label-position="top">
+        <el-form-item>
+          <el-switch v-model="smbForm.enabled" active-text="启用 SMB" inactive-text="禁用" />
+        </el-form-item>
+        
+        <template v-if="smbForm.enabled">
+          <el-form-item label="SMB 服务器地址">
+            <el-input v-model="smbForm.host" placeholder="例如: 192.168.1.100 或 NAS.local" />
+          </el-form-item>
+          <el-form-item label="共享名称">
+            <el-input v-model="smbForm.share" placeholder="例如: downloads" />
+          </el-form-item>
+          <el-form-item label="用户名">
+            <el-input v-model="smbForm.username" placeholder="留空表示匿名访问" />
+          </el-form-item>
+          <el-form-item label="密码">
+            <el-input v-model="smbForm.password" type="password" show-password placeholder="留空表示无密码" />
+          </el-form-item>
+          <el-form-item label="挂载点">
+            <el-input v-model="smbForm.mountPoint" placeholder="Linux/Mac: /mnt/smb, Windows: Z:" />
+          </el-form-item>
+        </template>
+
+        <el-form-item>
+          <el-button type="primary" :loading="savingSMB" @click="handleSaveSMB">
+            保存配置
+          </el-button>
+          <el-button v-if="smbForm.enabled" :loading="testingSMB" @click="handleTestSMB">
+            测试连接
+          </el-button>
+        </el-form-item>
+
+        <el-form-item v-if="smbStatus">
+          <el-tag :type="smbStatus.isMounted ? 'success' : 'info'" size="large">
+            {{ smbStatus.isMounted ? '已挂载' : smbStatus.enabled ? '已启用未挂载' : '未启用' }}
+          </el-tag>
+        </el-form-item>
+      </el-form>
+    </div>
+
     <!-- 重命名工具 -->
     <div class="card">
       <h3 style="margin-bottom: 16px">重命名工具</h3>
@@ -71,10 +114,10 @@
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import { ref, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useServerStore } from '@/stores/server'
-import { setDownloadMode, startRename } from '@/api/server'
+import { setDownloadMode, startRename, getSMBConfig, setSMBConfig, testSMBConnection } from '@/api/server'
 
 const serverStore = useServerStore()
 const downloadMode = ref(0)
@@ -87,12 +130,83 @@ const renameForm = ref({
   rename_match: false
 })
 
+const smbForm = ref({
+  enabled: false,
+  host: '',
+  share: '',
+  username: '',
+  password: '',
+  mountPoint: ''
+})
+
+const smbStatus = ref<{
+  enabled: boolean
+  isMounted: boolean
+} | null>(null)
+
+const savingSMB = ref(false)
+const testingSMB = ref(false)
+
+onMounted(async () => {
+  try {
+    const { data } = await getSMBConfig()
+    smbForm.value = {
+      enabled: data.enabled,
+      host: data.host,
+      share: data.share,
+      username: data.username,
+      password: data.password,
+      mountPoint: data.mountPoint
+    }
+    smbStatus.value = {
+      enabled: data.enabled,
+      isMounted: data.isMounted
+    }
+  } catch (error) {
+    console.error('Failed to load SMB config:', error)
+  }
+})
+
 async function handleModeChange(mode: number) {
   try {
     await setDownloadMode(mode)
     ElMessage.success('下载模式已更新')
   } catch (error) {
     ElMessage.error('设置失败')
+  }
+}
+
+async function handleSaveSMB() {
+  savingSMB.value = true
+  try {
+    await setSMBConfig(smbForm.value)
+    ElMessage.success('SMB 配置已保存')
+    const { data } = await getSMBConfig()
+    smbStatus.value = {
+      enabled: data.enabled,
+      isMounted: data.isMounted
+    }
+  } catch (error: any) {
+    ElMessage.error(error.message || '保存失败')
+  } finally {
+    savingSMB.value = false
+  }
+}
+
+async function handleTestSMB() {
+  testingSMB.value = true
+  try {
+    await testSMBConnection({
+      host: smbForm.value.host,
+      share: smbForm.value.share,
+      username: smbForm.value.username,
+      password: smbForm.value.password
+    })
+    ElMessage.success('SMB 连接测试成功')
+  } catch (error: any) {
+    ElMessage.error(error.message || '连接测试失败')
+  } finally {
+    testingSMB.value = false
   }
 }
 

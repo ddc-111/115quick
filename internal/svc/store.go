@@ -61,6 +61,19 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS smb_config (
+		id INTEGER PRIMARY KEY CHECK (id = 1),
+		enabled INTEGER NOT NULL DEFAULT 0,
+		host TEXT DEFAULT '',
+		share TEXT DEFAULT '',
+		username TEXT DEFAULT '',
+		password TEXT DEFAULT '',
+		mount_point TEXT DEFAULT '',
+		updated_at DATETIME NOT NULL
+	)`); err != nil {
+		return nil, err
+	}
+
 	return &Store{db: db}, nil
 }
 
@@ -189,4 +202,40 @@ func (s *Store) RemoveTaskHistory(url string) error {
 func (s *Store) ClearTaskHistory() error {
 	_, err := s.db.Exec("DELETE FROM task_history")
 	return err
+}
+
+// SMB 配置相关方法
+
+type SMBConfigData struct {
+	Enabled    bool
+	Host       string
+	Share      string
+	Username   string
+	Password   string
+	MountPoint string
+}
+
+func (s *Store) SaveSMBConfig(cfg SMBConfigData) error {
+	enabled := 0
+	if cfg.Enabled {
+		enabled = 1
+	}
+	_, err := s.db.Exec(`INSERT OR REPLACE INTO smb_config (id, enabled, host, share, username, password, mount_point, updated_at) 
+		VALUES (1, ?, ?, ?, ?, ?, ?, ?)`, enabled, cfg.Host, cfg.Share, cfg.Username, cfg.Password, cfg.MountPoint, time.Now())
+	return err
+}
+
+func (s *Store) GetSMBConfig() (*SMBConfigData, error) {
+	row := s.db.QueryRow("SELECT enabled, host, share, username, password, mount_point FROM smb_config WHERE id = 1")
+	var cfg SMBConfigData
+	var enabled int
+	err := row.Scan(&enabled, &cfg.Host, &cfg.Share, &cfg.Username, &cfg.Password, &cfg.MountPoint)
+	if err == sql.ErrNoRows {
+		return &SMBConfigData{}, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+	cfg.Enabled = enabled == 1
+	return &cfg, nil
 }

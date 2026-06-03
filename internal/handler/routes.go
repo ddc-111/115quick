@@ -52,6 +52,12 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: Download.GetServerInfoHandler(serverCtx),
 			},
 			{
+				// 获取SMB配置
+				Method:  http.MethodGet,
+				Path:    "/api/getSMBConfig",
+				Handler: Download.GetSMBConfigHandler(serverCtx),
+			},
+			{
 				// 获取任务历史
 				Method:  http.MethodGet,
 				Path:    "/api/getTaskHistory",
@@ -82,10 +88,22 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Handler: Download.SetDownloadModeHandler(serverCtx),
 			},
 			{
+				// 设置SMB配置
+				Method:  http.MethodPost,
+				Path:    "/api/setSMBConfig",
+				Handler: Download.SetSMBConfigHandler(serverCtx),
+			},
+			{
 				// 设置115 Token
 				Method:  http.MethodPost,
 				Path:    "/api/setToken",
 				Handler: Download.SetTokenHandler(serverCtx),
+			},
+			{
+				// 测试SMB连接
+				Method:  http.MethodPost,
+				Path:    "/api/testSMBConnection",
+				Handler: Download.TestSMBConnectionHandler(serverCtx),
 			},
 		},
 		rest.WithPrefix("/v1/Download"),

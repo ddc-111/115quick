@@ -21,3 +21,27 @@ export function startRename(params: {
 }) {
   return request.post('/api/StartReName', params)
 }
+
+export function getSMBConfig() {
+  return request.get('/api/getSMBConfig')
+}
+
+export function setSMBConfig(params: {
+  enabled: boolean
+  host?: string
+  share?: string
+  username?: string
+  password?: string
+  mountPoint?: string
+}) {
+  return request.post('/api/setSMBConfig', params)
+}
+
+export function testSMBConnection(params: {
+  host: string
+  share: string
+  username?: string
+  password?: string
+}) {
+  return request.post('/api/testSMBConnection', params)
+}

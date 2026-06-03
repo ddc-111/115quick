@@ -3,6 +3,7 @@ package svc
 import (
 	"115Quick_server/internal/config"
 	"115Quick_server/internal/types"
+	"115Quick_server/internal/utils/smb"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -23,6 +24,7 @@ type ServiceContext struct {
 	Mode                    int64
 	DownloadLinkMessageChan chan *DownloadLinkMessage
 	folderID                string
+	SMB                     *smb.SMBManager
 }
 
 type DownloadLinkMessage struct {
@@ -34,6 +36,7 @@ func NewServiceContext(c config.Config) *ServiceContext {
 		Config:                  c,
 		Mode:                    0,
 		DownloadLinkMessageChan: make(chan *DownloadLinkMessage, 1000000),
+		SMB:                     smb.NewSMBManager(),
 	}
 
 	store, err := NewStore(c.DBPath)

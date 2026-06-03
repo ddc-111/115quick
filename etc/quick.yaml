@@ -6,3 +6,10 @@ Auth115:
   DownloadPath: data
   AccessToken: ""
   RefreshToken: ""
+SMB:
+  Enabled: false
+  Host: ""
+  Share: ""
+  Username: ""
+  Password: ""
+  MountPoint: ""

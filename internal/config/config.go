@@ -10,4 +10,12 @@ type Config struct {
 		AccessToken  string
 		RefreshToken string
 	}
+	SMB struct {
+		Enabled  bool   `json:",default=false"`
+		Host     string `json:",optional"`
+		Share    string `json:",optional"`
+		Username string `json:",optional"`
+		Password string `json:",optional"`
+		MountPoint string `json:",optional"`
+	}
 }

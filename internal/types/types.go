@@ -130,3 +130,32 @@ type TokenStatusResp struct {
 	ExpiresAt  string `json:"expiresAt"`  // 过期时间
 	Message    string `json:"message"`    // 状态消息
 }
+
+type SetSMBConfigReq struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host,optional"`
+	Share      string `json:"share,optional"`
+	Username   string `json:"username,optional"`
+	Password   string `json:"password,optional"`
+	MountPoint string `json:"mountPoint,optional"`
+}
+
+type GetSMBConfigReq struct {
+}
+
+type GetSMBConfigResp struct {
+	Enabled    bool   `json:"enabled"`
+	Host       string `json:"host"`
+	Share      string `json:"share"`
+	Username   string `json:"username"`
+	Password   string `json:"password"`
+	MountPoint string `json:"mountPoint"`
+	IsMounted  bool   `json:"isMounted"`
+}
+
+type TestSMBConnectionReq struct {
+	Host     string `json:"host"`
+	Share    string `json:"share"`
+	Username string `json:"username,optional"`
+	Password string `json:"password,optional"`
+}
