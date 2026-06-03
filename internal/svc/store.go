@@ -74,6 +74,14 @@ func NewStore(dbPath string) (*Store, error) {
 		return nil, err
 	}
 
+	if _, err := db.Exec(`CREATE TABLE IF NOT EXISTS config (
+		key TEXT PRIMARY KEY,
+		value TEXT NOT NULL DEFAULT '',
+		updated_at DATETIME NOT NULL
+	)`); err != nil {
+		return nil, err
+	}
+
 	return &Store{db: db}, nil
 }
 
@@ -238,4 +246,19 @@ func (s *Store) GetSMBConfig() (*SMBConfigData, error) {
 	}
 	cfg.Enabled = enabled == 1
 	return &cfg, nil
+}
+
+func (s *Store) SetConfig(key, value string) error {
+	_, err := s.db.Exec(`INSERT OR REPLACE INTO config (key, value, updated_at) VALUES (?, ?, ?)`,
+		key, value, time.Now())
+	return err
+}
+
+func (s *Store) GetConfig(key string) (string, error) {
+	var value string
+	err := s.db.QueryRow("SELECT value FROM config WHERE key = ?", key).Scan(&value)
+	if err == sql.ErrNoRows {
+		return "", nil
+	}
+	return value, err
 }

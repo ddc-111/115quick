@@ -178,3 +178,61 @@ type GetServerLogsReq struct {
 type GetServerLogsResp struct {
 	Logs []string `json:"logs"`
 }
+
+type CloudFile struct {
+	FileID     string `json:"fileId"`
+	FileName   string `json:"fileName"`
+	FileSize   int64  `json:"fileSize"`
+	IsDir      bool   `json:"isDir"`
+	ParentID   string `json:"parentId"`
+	UpdateTime string `json:"updateTime"`
+	PickCode   string `json:"pickCode,omitempty"`
+}
+
+type GetCloudFilesReq struct {
+	FolderID string `json:"folderId,optional,default=0"`
+	FileType int    `json:"fileType,optional"`
+}
+
+type GetCloudFilesResp struct {
+	Files      []CloudFile `json:"files"`
+	CurrentID  string      `json:"currentId"`
+	ParentID   string      `json:"parentId"`
+}
+
+type CreateFolderReq struct {
+	ParentID   string `json:"parentId"`
+	FolderName string `json:"folderName"`
+}
+
+type CreateFolderResp struct {
+	FileID   string `json:"fileId"`
+	FileName string `json:"fileName"`
+}
+
+type DeleteFileReq struct {
+	FileIDs string `json:"fileIds"`
+}
+
+type RenameFileReq struct {
+	FileID   string `json:"fileId"`
+	NewName  string `json:"newName"`
+}
+
+type MoveFileReq struct {
+	FileIDs    string `json:"fileIds"`
+	TargetDir  string `json:"targetDir"`
+}
+
+type SetDefaultDownloadDirReq struct {
+	FolderID   string `json:"folderId"`
+	FolderName string `json:"folderName"`
+}
+
+type GetDefaultDownloadDirReq struct {
+}
+
+type GetDefaultDownloadDirResp struct {
+	FolderID   string `json:"folderId"`
+	FolderName string `json:"folderName"`
+}

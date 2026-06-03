@@ -36,6 +36,11 @@ const router = createRouter({
       path: '/logs',
       name: 'LogViewer',
       component: () => import('@/views/LogViewer.vue')
+    },
+    {
+      path: '/cloud-files',
+      name: 'CloudFiles',
+      component: () => import('@/views/CloudFiles.vue')
     }
   ]
 })

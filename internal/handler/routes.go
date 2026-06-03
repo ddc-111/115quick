@@ -111,6 +111,48 @@ func RegisterHandlers(server *rest.Server, serverCtx *svc.ServiceContext) {
 				Path:    "/api/getServerLogs",
 				Handler: Download.GetServerLogsHandler(serverCtx),
 			},
+			{
+				// 获取云文件列表
+				Method:  http.MethodGet,
+				Path:    "/api/getCloudFiles",
+				Handler: Download.GetCloudFilesHandler(serverCtx),
+			},
+			{
+				// 创建文件夹
+				Method:  http.MethodPost,
+				Path:    "/api/createFolder",
+				Handler: Download.CreateFolderHandler(serverCtx),
+			},
+			{
+				// 删除文件
+				Method:  http.MethodPost,
+				Path:    "/api/deleteFile",
+				Handler: Download.DeleteFileHandler(serverCtx),
+			},
+			{
+				// 重命名文件
+				Method:  http.MethodPost,
+				Path:    "/api/renameFile",
+				Handler: Download.RenameFileHandler(serverCtx),
+			},
+			{
+				// 移动文件
+				Method:  http.MethodPost,
+				Path:    "/api/moveFile",
+				Handler: Download.MoveFileHandler(serverCtx),
+			},
+			{
+				// 设置默认下载目录
+				Method:  http.MethodPost,
+				Path:    "/api/setDefaultDownloadDir",
+				Handler: Download.SetDefaultDownloadDirHandler(serverCtx),
+			},
+			{
+				// 获取默认下载目录
+				Method:  http.MethodGet,
+				Path:    "/api/getDefaultDownloadDir",
+				Handler: Download.GetDefaultDownloadDirHandler(serverCtx),
+			},
 		},
 		rest.WithPrefix("/v1/Download"),
 	)
