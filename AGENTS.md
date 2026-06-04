@@ -160,6 +160,7 @@ GitHub Actions workflow (`.github/workflows/release.yml`):
 - v0.9.1 - Fix rename API, token refresh timing, SMB error messages
 - v0.9.2 - Improve SMB connection for Windows shares without password
 - v0.9.3 - Fix token refresh on startup, add retry for cloud file API
+- v0.9.4 - Fix empty pending queue placeholder, force token refresh on error 40140126
 
 **How to Release**:
 ```bash
