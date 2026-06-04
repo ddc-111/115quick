@@ -188,6 +188,23 @@ func (m *Auth115Manager) RefreshToken() (string, error) {
 		}
 	}
 
+	return m.doRefreshToken()
+}
+
+// ForceRefreshToken 强制刷新 token，跳过缓存检查
+func (m *Auth115Manager) ForceRefreshToken() (string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	return m.doRefreshToken()
+}
+
+// doRefreshToken 实际执行 token 刷新（需要持有锁）
+func (m *Auth115Manager) doRefreshToken() (string, error) {
+	if m.authInfo == nil || m.authInfo.RefreshToken == "" {
+		return "", fmt.Errorf("未设置 RefreshToken")
+	}
+
 	data := url.Values{}
 	data.Set("refresh_token", m.authInfo.RefreshToken)
 
@@ -421,35 +438,51 @@ func (m *Auth115Manager) GetOfflineTaskList(page int) (*types.GetOfflineTaskList
 		apiURL += "?" + params.Encode()
 	}
 
-	request, err := http.NewRequest("GET", apiURL, nil)
-	if err != nil {
-		return nil, fmt.Errorf("创建请求失败: %v", err)
+	// 尝试请求，如果失败则刷新 token 重试
+	for retry := 0; retry < 2; retry++ {
+		request, err := http.NewRequest("GET", apiURL, nil)
+		if err != nil {
+			return nil, fmt.Errorf("创建请求失败: %v", err)
+		}
+
+		request.Header.Set("Authorization", "Bearer "+accessToken)
+
+		client := &http.Client{}
+		response, err := client.Do(request)
+		if err != nil {
+			return nil, fmt.Errorf("发送请求失败: %v", err)
+		}
+		defer response.Body.Close()
+
+		body, err := io.ReadAll(response.Body)
+		if err != nil {
+			return nil, fmt.Errorf("读取响应失败: %v", err)
+		}
+
+		var result types.GetOfflineTaskListResp
+		if err := json.Unmarshal(body, &result); err != nil {
+			return nil, fmt.Errorf("解析响应失败: %v", body)
+		}
+
+		// 如果成功，返回结果
+		if result.State {
+			return &result, nil
+		}
+
+		// 如果是 token 错误且是第一次尝试，强制刷新 token 重试
+		if retry == 0 && (result.Code == 401 || result.Code == 40002 || result.Code == 40140126 || strings.Contains(result.Message, "token") || strings.Contains(result.Message, "Token")) {
+			logx.Infof("Token 可能已过期 (code: %d)，尝试强制刷新...", result.Code)
+			accessToken, err = m.ForceRefreshToken()
+			if err != nil {
+				return nil, fmt.Errorf("刷新token失败: %v", err)
+			}
+			continue
+		}
+
+		return nil, fmt.Errorf("获取云下载任务列表失败: %s (code: %d)", result.Message, result.Code)
 	}
 
-	request.Header.Set("Authorization", "Bearer "+accessToken)
-
-	client := &http.Client{}
-	response, err := client.Do(request)
-	if err != nil {
-		return nil, fmt.Errorf("发送请求失败: %v", err)
-	}
-	defer response.Body.Close()
-
-	body, err := io.ReadAll(response.Body)
-	if err != nil {
-		return nil, fmt.Errorf("读取响应失败: %v", err)
-	}
-
-	var result types.GetOfflineTaskListResp
-	if err := json.Unmarshal(body, &result); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %v", body)
-	}
-
-	if !result.State {
-		return nil, fmt.Errorf("获取云下载任务列表失败: %s", result.Message)
-	}
-
-	return &result, nil
+	return nil, fmt.Errorf("获取云下载任务列表失败")
 }
 
 func (m *Auth115Manager) PollFiles() {
@@ -809,10 +842,10 @@ func (m *Auth115Manager) GetFolderFiles(folderID string, fileType int) (*types.G
 			return &result, nil
 		}
 
-		// 如果是 token 错误且是第一次尝试，刷新 token 重试
-		if retry == 0 && (result.Code == 401 || result.Code == 40002 || strings.Contains(result.Message, "token") || strings.Contains(result.Message, "Token")) {
-			logx.Info("Token 可能已过期，尝试刷新...")
-			accessToken, err = m.RefreshToken()
+		// 如果是 token 错误且是第一次尝试，强制刷新 token 重试
+		if retry == 0 && (result.Code == 401 || result.Code == 40002 || result.Code == 40140126 || strings.Contains(result.Message, "token") || strings.Contains(result.Message, "Token")) {
+			logx.Infof("Token 可能已过期 (code: %d)，尝试强制刷新...", result.Code)
+			accessToken, err = m.ForceRefreshToken()
 			if err != nil {
 				return nil, fmt.Errorf("刷新token失败: %v", err)
 			}

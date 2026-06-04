@@ -42,9 +42,7 @@ func (l *GetServerInfoLogic) GetServerInfo(req *types.ServerInfoReq) (resp *type
 		}
 	}
 	if len(fileInfos) == 0 {
-		var downFileInfoList []types.DownFileInfo
-		downFileInfoList = append(downFileInfoList, types.DownFileInfo{Url: "暂无等待下载链接 服务器正常运行中", AddTime: time.Now().Format("2006-01-02 15:04:05")})
-		resp.DownFileInfoList = downFileInfoList
+		resp.DownFileInfoList = []types.DownFileInfo{}
 	}
 
 	resp.AuthData = types.AuthData{
