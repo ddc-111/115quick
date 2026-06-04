@@ -19,7 +19,14 @@ type APIError struct {
 	Code    int    `json:"code"`
 	Message string `json:"message"`
 	ErrNo   int    `json:"errno"`
-	Error   string `json:"error"`
+	ErrorStr string `json:"error"`
+}
+
+func (e *APIError) Error() string {
+	if e.Message != "" {
+		return fmt.Sprintf("api error: code=%d message=%s", e.Code, e.Message)
+	}
+	return fmt.Sprintf("api error: code=%d", e.Code)
 }
 
 func (e *APIError) IsTokenError() bool {
@@ -41,12 +48,12 @@ func NewClient(tokenMgr *Manager) *Client {
 }
 
 type Response struct {
-	State   bool            `json:"state"`
-	Code    int             `json:"code"`
-	Message string          `json:"message"`
-	Data    json.RawMessage `json:"data"`
-	Error   string          `json:"error"`
-	ErrNo   int             `json:"errno"`
+	State    bool            `json:"state"`
+	Code     int             `json:"code"`
+	Message  string          `json:"message"`
+	Data     json.RawMessage `json:"data"`
+	ErrorStr string          `json:"error"`
+	ErrNo    int             `json:"errno"`
 }
 
 func (c *Client) Get(path string, params map[string]string) (*Response, error) {
@@ -118,7 +125,7 @@ func (c *Client) doRequest(method, path string, params map[string]string, body i
 			Code:    apiResp.Code,
 			Message: apiResp.Message,
 			ErrNo:   apiResp.ErrNo,
-			Error:   apiResp.Error,
+			ErrorStr: apiResp.ErrorStr,
 		}
 
 		if apiErr.IsTokenError() {
