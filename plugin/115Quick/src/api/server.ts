@@ -12,47 +12,6 @@ export function setDownloadMode(mode: number) {
   return request.post('/api/setDownloadMode', { mode })
 }
 
-export function startRename(params: {
-  mode?: number
-  folder_id?: string
-  file_pattern?: string
-  delete_others?: boolean
-  rename_match?: boolean
-}) {
-  return request.post('/api/StartReName', params)
-}
-
-export function getSMBConfig() {
-  return request.get('/api/getSMBConfig')
-}
-
-export function setSMBConfig(params: {
-  enabled: boolean
-  host?: string
-  share?: string
-  username?: string
-  password?: string
-}) {
-  return request.post('/api/setSMBConfig', params)
-}
-
-export function testSMBConnection(params: {
-  host: string
-  share: string
-  username?: string
-  password?: string
-}) {
-  return request.post('/api/testSMBConnection', params)
-}
-
-export function smbBrowse(path: string = '') {
-  return request.get('/api/smb/browse', { params: { path } })
-}
-
-export function smbDownload(remotePath: string, localPath?: string) {
-  return request.post('/api/smb/download', { remotePath, localPath })
-}
-
 export function getServerLogs(type: string = 'stdout', lines: number = 200) {
   return request.get('/api/getServerLogs', { params: { type, lines } })
 }
@@ -91,4 +50,14 @@ export function clearTaskHistory() {
 
 export function clearCompletedTasks() {
   return request.post('/api/clearCompletedTasks')
+}
+
+export function startRename(params: {
+  mode?: number
+  folder_id?: string
+  file_pattern?: string
+  delete_others?: boolean
+  rename_match?: boolean
+}) {
+  return request.post('/api/StartReName', params)
 }

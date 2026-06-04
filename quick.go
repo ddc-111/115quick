@@ -66,7 +66,7 @@ func main() {
 	cloudSvc := cloudtask.NewService(apiClient)
 	downloadEng := download.NewEngine(tokenMgr, cfg.Auth115.DownloadPath)
 
-	h := handler.NewHandler(tokenMgr, fileSvc, videoSvc, cloudSvc, downloadEng)
+	h := handler.NewHandler(tokenMgr, db, fileSvc, videoSvc, cloudSvc, downloadEng)
 
 	gin.SetMode(gin.ReleaseMode)
 	r := gin.New()
